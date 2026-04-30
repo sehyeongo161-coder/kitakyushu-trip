@@ -21,7 +21,6 @@
     </div>
 
     <div class="w-full max-w-md bg-[#FAFAFA] min-h-screen shadow-2xl relative pb-24 overflow-x-hidden">
-        <!-- 핑크 테마 헤더 -->
         <header class="bg-gradient-to-br from-pink-100 via-rose-50 to-blue-50 px-6 pt-12 pb-8 rounded-b-[40px] shadow-sm relative overflow-hidden">
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
             <div class="absolute top-10 -left-10 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
@@ -44,26 +43,15 @@
                     </button>
                 </div>
             </div>
-            <div id="edit-notice" class="hidden mt-4 text-xs font-bold text-pink-600 bg-white/70 px-3 py-2 rounded-lg backdrop-blur-sm shadow-sm text-center">
-                ✏️ 편집 모드: 수정 완료 후 꼭 우측 상단 체크(✔) 버튼을 누르세요!
-            </div>
         </header>
 
         <main class="px-5 -mt-4 relative z-20">
-            <!-- 탭 1: 일정표 -->
+            <!-- 일정표 -->
             <div id="itinerary-view">
                 <div id="trip-container"></div>
-                <!-- 돈키호테 안내 배너 -->
-                <a href="https://maps.app.goo.gl/3NnJcWz3o2zEwAEx6" target="_blank" class="block mt-4 mb-8 bg-blue-50 border border-blue-100 rounded-2xl p-5 flex items-start space-x-4 shadow-sm hover:bg-blue-100 transition-colors">
-                    <div class="bg-blue-200 p-3 rounded-full text-blue-600 flex-shrink-0"><i data-lucide="shopping-bag" class="w-6 h-6"></i></div>
-                    <div>
-                        <h4 class="font-bold text-gray-800 text-sm mb-1 flex items-center">잊지 마세요! <i data-lucide="map-pin" class="w-3 h-3 ml-1 text-blue-500"></i></h4>
-                        <p class="text-xs text-gray-600 leading-relaxed">여행 중간 시간 날 때 <strong class="text-blue-600">돈키호테 고쿠라점</strong>에 들러 쇼핑하기!</p>
-                    </div>
-                </a>
             </div>
 
-            <!-- 탭 2: 먹킷리스트 (새로 추가) -->
+            <!-- 먹킷리스트 -->
             <div id="muckkit-view" class="hidden pb-8">
                 <div class="flex items-center mb-6 px-1 mt-4">
                     <div class="bg-pink-100 p-2 rounded-xl mr-3 shadow-sm border border-pink-200/50">
@@ -74,13 +62,13 @@
                 <div id="muckkit-container" class="space-y-6 mt-2"></div>
             </div>
 
-            <!-- 탭 3: 체크리스트 -->
+            <!-- 체크리스트 -->
             <div id="checklist-view" class="hidden pb-8">
                 <div id="checklist-container" class="bg-white rounded-3xl shadow-sm border border-pink-50/50 p-5 mt-4"></div>
             </div>
         </main>
 
-        <!-- 하단 네비게이션 (3개 탭으로 변경) -->
+        <!-- 네비게이션 -->
         <div class="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-100 p-4 flex justify-around items-center text-gray-400 pb-6 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
             <button id="nav-itinerary" class="flex flex-col items-center text-pink-500" onclick="window.switchTab('itinerary')">
                 <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i>
@@ -122,30 +110,24 @@
         let currentTab = 'itinerary';
         let historyStack = [];
 
-        // 아이콘 리스트 (배, 지하철 포함)
         const getIconColor = (type) => {
-            const colors = { 
-                plane: 'text-blue-500', 
-                ship: 'text-cyan-500', 
-                train: 'text-indigo-600',
-                bus: 'text-emerald-500', 
-                utensils: 'text-orange-500', 
-                'shopping-bag': 'text-pink-500', 
-                camera: 'text-teal-500', 
-                heart: 'text-rose-500', 
-                coffee: 'text-amber-600',
-                'ice-cream': 'text-pink-400'
-            };
+            const colors = { plane: 'text-blue-500', ship: 'text-cyan-500', train: 'text-indigo-600', bus: 'text-emerald-500', utensils: 'text-orange-500', 'shopping-bag': 'text-pink-500', camera: 'text-teal-500', heart: 'text-rose-500', coffee: 'text-amber-600', 'ice-cream': 'text-pink-400' };
             return colors[type] || 'text-pink-400';
         };
 
         async function saveData() {
-            const docRef = doc(db, 'trips', 'kitakyushu'); // 기타큐슈 문서 사용
+            const docRef = doc(db, 'trips', 'kitakyushu');
             await setDoc(docRef, { 
                 tripData: JSON.stringify(tripData), 
                 muckkitData: JSON.stringify(muckkitData),
                 checklistData: JSON.stringify(checklistData) 
             });
+        }
+
+        function saveHistory() {
+            historyStack.push({ tripData: JSON.parse(JSON.stringify(tripData)), muckkitData: JSON.parse(JSON.stringify(muckkitData)), checklistData: JSON.parse(JSON.stringify(checklistData)) });
+            if(historyStack.length > 20) historyStack.shift();
+            updateUndoButtonState();
         }
 
         window.undoAction = function() {
@@ -154,16 +136,6 @@
             tripData = prevState.tripData; muckkitData = prevState.muckkitData; checklistData = prevState.checklistData;
             saveData(); render();
         };
-
-        function saveHistory() {
-            historyStack.push({ 
-                tripData: JSON.parse(JSON.stringify(tripData)), 
-                muckkitData: JSON.parse(JSON.stringify(muckkitData)),
-                checklistData: JSON.parse(JSON.stringify(checklistData)) 
-            });
-            if(historyStack.length > 20) historyStack.shift();
-            updateUndoButtonState();
-        }
 
         function updateUndoButtonState() {
             const btn = document.getElementById('undo-btn');
@@ -175,71 +147,52 @@
             isEditMode = !isEditMode;
             expandedMemos = {}; 
             const btn = document.getElementById('edit-toggle-btn');
-            const notice = document.getElementById('edit-notice');
-            if (isEditMode) { 
-                btn.classList.add('bg-pink-100', 'text-pink-600'); 
-                btn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i>'; 
-                notice.classList.remove('hidden'); 
-            } else { 
-                btn.classList.remove('bg-pink-100', 'text-pink-600'); 
-                btn.innerHTML = '<i data-lucide="edit-3" class="w-5 h-5"></i>'; 
-                notice.classList.add('hidden'); 
-                saveData(); 
-            }
+            if (isEditMode) { btn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i>'; } 
+            else { btn.innerHTML = '<i data-lucide="edit-3" class="w-5 h-5"></i>'; saveData(); }
             render();
         };
 
-        window.switchTab = function(tab) { currentTab = tab; window.scrollTo(0,0); render(); };
+        window.switchTab = function(tab) { currentTab = tab; render(); };
         window.toggleDay = function(id) { if (openDays.includes(id)) openDays = openDays.filter(d => d !== id); else openDays.push(id); render(); };
 
-        // 아이콘 변경 기능 (순서: 비행기 -> 배 -> 지하철 -> 버스 -> ...)
+        // 아이콘 변경
         window.changeIcon = function(dayId, activityId) {
             const types = ['plane', 'ship', 'train', 'bus', 'utensils', 'shopping-bag', 'camera', 'heart', 'coffee'];
             const day = tripData.find(d => String(d.id) === String(dayId));
             const act = day.activities.find(a => String(a.id) === String(activityId));
-            if (act) {
-                saveHistory();
-                const currentIdx = types.indexOf(act.type);
-                act.type = types[(currentIdx + 1) % types.length];
-                render();
-            }
+            if (act) { saveHistory(); const cur = types.indexOf(act.type); act.type = types[(cur + 1) % types.length]; render(); }
         };
 
+        // 데이터 업데이트 (일정표)
         window.updateData = function(dayId, activityId, field, value) {
             const day = tripData.find(d => String(d.id) === String(dayId));
-            if(!day) return;
-            saveHistory();
-            if (activityId === null) { day[field] = value; } 
-            else { const act = day.activities.find(a => String(a.id) === String(activityId)); if(act) act[field] = value; }
+            if (day) { saveHistory(); if (activityId === null) day[field] = value; else { const act = day.activities.find(a => String(a.id) === String(activityId)); if (act) act[field] = value; } }
         };
 
-        window.deleteActivity = function(dayId, actId) {
-            saveHistory();
-            const day = tripData.find(d => String(d.id) === String(dayId));
-            if(day) { day.activities = day.activities.filter(a => String(a.id) !== String(actId)); render(); }
-        };
-
-        window.addActivity = function(dayId) {
-            saveHistory();
-            const day = tripData.find(d => String(d.id) === String(dayId));
-            if(day) { day.activities.push({ id: Date.now(), time: "시간", title: "새 일정", type: "heart", desc: "", memo: "" }); render(); }
-        };
-
-        window.toggleMemo = function(e, actId, state) {
+        // 메모 기능 (공통 사용)
+        window.toggleMemo = function(e, id, state) {
             if (e) e.stopPropagation();
-            expandedMemos[actId] = (expandedMemos[actId] === state) ? null : state;
+            expandedMemos[id] = (expandedMemos[id] === state) ? null : state;
             render();
         };
 
-        window.saveInlineMemo = function(e, dayId, actId) {
+        window.saveMemo = function(e, id, type) {
             if (e) e.stopPropagation();
-            const val = document.getElementById(`memo-input-${actId}`).value;
-            const day = tripData.find(d => String(d.id) === String(dayId));
-            const act = day.activities.find(a => String(a.id) === String(actId));
-            if(act) { saveHistory(); act.memo = val; saveData(); expandedMemos[actId] = 'view'; render(); }
+            const val = document.getElementById(`memo-input-${id}`).value;
+            saveHistory();
+            if (type === 'muck') {
+                const item = muckkitData.find(m => String(m.id) === String(id));
+                if (item) item.memo = val;
+            } else {
+                tripData.forEach(day => {
+                    const act = day.activities.find(a => String(a.id) === String(id));
+                    if (act) act.memo = val;
+                });
+            }
+            saveData(); expandedMemos[id] = 'view'; render();
         };
 
-        // 먹킷리스트 함수들
+        // 먹킷리스트 관리
         window.updateMuckkit = function(id, field, value) {
             const item = muckkitData.find(m => String(m.id) === String(id));
             if (item) { saveHistory(); item[field] = value; }
@@ -247,7 +200,7 @@
 
         window.addMuckkit = function(category) {
             saveHistory();
-            muckkitData.push({ id: Date.now(), category: category, name: "새로운 " + category, tags: "태그 입력", mapUrl: "" });
+            muckkitData.push({ id: Date.now(), category: category, name: "새로운 " + category, tags: "", memo: "", mapUrl: "" });
             render();
         };
 
@@ -257,84 +210,54 @@
             render();
         };
 
-        // 체크리스트 함수들
+        // 일정표 관련 삭제/추가
+        window.deleteActivity = function(dayId, actId) {
+            saveHistory();
+            const day = tripData.find(d => String(d.id) === String(dayId));
+            if (day) { day.activities = day.activities.filter(a => String(a.id) !== String(actId)); render(); }
+        };
+
+        window.addActivity = function(dayId) {
+            saveHistory();
+            const day = tripData.find(d => String(d.id) === String(dayId));
+            if (day) { day.activities.push({ id: Date.now(), time: "시간", title: "새 일정", type: "heart", desc: "", memo: "" }); render(); }
+        };
+
+        // 체크리스트
         window.toggleChecklistItem = function(id) {
             if (isEditMode) return;
             const item = checklistData.find(i => String(i.id) === String(id));
             if (item) { saveHistory(); item.checked = !item.checked; saveData(); render(); }
         };
-        
-        window.updateChecklistData = function(id, value) {
-            const item = checklistData.find(i => String(i.id) === String(id)); if (item) { saveHistory(); item.text = value; }
-        };
+        window.updateChecklistData = function(id, val) { saveHistory(); const item = checklistData.find(i => String(i.id) === String(id)); if (item) item.text = val; };
         window.deleteChecklistItem = function(id) { saveHistory(); checklistData = checklistData.filter(i => String(i.id) !== String(id)); render(); };
         window.addChecklistItem = function() { saveHistory(); checklistData.push({ id: 'c' + Date.now(), text: "", checked: false }); render(); };
-
 
         function render() {
             document.getElementById('itinerary-view').style.display = currentTab === 'itinerary' ? 'block' : 'none';
             document.getElementById('muckkit-view').style.display = currentTab === 'muckkit' ? 'block' : 'none';
             document.getElementById('checklist-view').style.display = currentTab === 'checklist' ? 'block' : 'none';
-            
-            const navs = { itinerary: 'nav-itinerary', muckkit: 'nav-muckkit', checklist: 'nav-checklist' };
-            Object.keys(navs).forEach(key => {
-                const el = document.getElementById(navs[key]);
-                if (key === currentTab) el.classList.add('text-pink-500');
-                else el.classList.remove('text-pink-500');
-            });
 
-            // 1. 먹킷리스트 렌더링
+            // 1. 먹킷리스트 렌더링 (메모 기능 포함)
             const muckContainer = document.getElementById('muckkit-container');
-            muckContainer.innerHTML = ''; 
-            
+            muckContainer.innerHTML = '';
             ["식당", "카페", "군것질"].forEach(cat => {
                 const items = muckkitData.filter(m => m.category === cat);
-                let iconType = 'utensils';
-                if (cat === '카페') iconType = 'coffee';
-                if (cat === '군것질') iconType = 'ice-cream';
-                
-                let catHtml = `<div class="mb-6">
-                    <div class="flex justify-between items-center mb-3">
-                        <div class="flex items-center space-x-2 bg-white border border-pink-100 shadow-sm px-4 py-1.5 rounded-full">
-                           <i data-lucide="${iconType}" class="w-4 h-4 text-pink-500"></i>
-                           <h3 class="text-[13px] font-extrabold text-pink-600 tracking-wide">${cat}</h3>
-                        </div>
-                    </div>
-                    <div class="space-y-3">`;
-                
+                let iconType = cat === '카페' ? 'coffee' : (cat === '군것질' ? 'ice-cream' : 'utensils');
+                let catHtml = `<div class="mb-6"><div class="flex items-center space-x-2 bg-white border border-pink-100 px-4 py-1.5 rounded-full w-max mb-3"><i data-lucide="${iconType}" class="w-4 h-4 text-pink-500"></i><h3 class="text-[13px] font-extrabold text-pink-600">${cat}</h3></div><div class="space-y-3">`;
                 items.forEach(item => {
                     if (isEditMode) {
-                        catHtml += `<div class="bg-white p-4 rounded-2xl border-2 border-pink-100 shadow-sm relative">
-                            <div class="flex gap-2 mb-3">
-                                <i data-lucide="${iconType}" class="w-4 h-4 text-pink-400 mt-1"></i>
-                                <input type="text" class="edit-input flex-1 font-bold text-sm bg-pink-50/30" value="${item.name}" onchange="window.updateMuckkit('${item.id}', 'name', this.value)">
-                            </div>
-                            <input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${item.tags}" placeholder="태그 (#지역, #특징)" onchange="window.updateMuckkit('${item.id}', 'tags', this.value)">
-                            <div class="flex justify-between items-center">
-                                <div class="flex-1 mr-2 flex items-center bg-gray-50 rounded p-1 border border-gray-100">
-                                   <i data-lucide="map-pin" class="w-3 h-3 text-gray-400 mx-1"></i>
-                                   <input type="text" class="edit-input flex-1 text-[10px] text-blue-500 border-none bg-transparent p-0" value="${item.mapUrl}" placeholder="구글맵 URL (https:// 포함)" onchange="window.updateMuckkit('${item.id}', 'mapUrl', this.value)">
-                                </div>
-                                <button onclick="window.deleteMuckkit('${item.id}')" class="bg-red-50 text-red-500 p-1.5 rounded hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                            </div>
-                        </div>`;
+                        catHtml += `<div class="bg-white p-4 rounded-2xl border-2 border-pink-100 shadow-sm"><div class="flex gap-2 mb-3"><i data-lucide="${iconType}" class="w-4 h-4 text-pink-400 mt-1"></i><input type="text" class="edit-input flex-1 font-bold text-sm bg-pink-50/30" value="${item.name}" onchange="window.updateMuckkit('${item.id}', 'name', this.value)"></div><input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${item.tags}" placeholder="#태그 입력" onchange="window.updateMuckkit('${item.id}', 'tags', this.value)"><div class="flex justify-between items-center"><div class="flex-1 mr-2 flex bg-gray-50 rounded p-1 border"><i data-lucide="map-pin" class="w-3 h-3 text-gray-400 mx-1"></i><input type="text" class="edit-input flex-1 text-[10px] text-blue-500 border-none bg-transparent p-0" value="${item.mapUrl}" placeholder="구글맵 URL" onchange="window.updateMuckkit('${item.id}', 'mapUrl', this.value)"></div><button onclick="window.deleteMuckkit('${item.id}')" class="text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
                     } else {
-                        const tags = item.tags.split(',').map(t => `<span class="bg-pink-50 text-pink-600 text-[10px] font-bold px-2 py-0.5 rounded-md mr-1 border border-pink-100">#${t.trim()}</span>`).join('');
-                        catHtml += `<div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center group hover:border-pink-200 transition-colors">
-                            <div class="flex items-start space-x-3">
-                                <div class="bg-pink-50 p-2.5 rounded-xl mt-0.5 border border-pink-100/50"><i data-lucide="${iconType}" class="w-5 h-5 text-pink-500"></i></div>
-                                <div>
-                                    <h4 class="font-extrabold text-gray-800 text-[15px]">${item.name}</h4>
-                                    <div class="mt-1.5 flex flex-wrap gap-y-1">${tags}</div>
-                                </div>
-                            </div>
-                            ${item.mapUrl ? `<a href="${item.mapUrl}" target="_blank" class="p-2.5 bg-blue-50 text-blue-500 rounded-full hover:bg-blue-100 transition-colors shadow-sm ml-2 shrink-0"><i data-lucide="map-pin" class="w-4 h-4"></i></a>` : ''}
-                        </div>`;
+                        const memoState = expandedMemos[item.id];
+                        const tags = item.tags ? item.tags.split(',').map(t => `<span class="bg-pink-50 text-pink-600 text-[10px] font-bold px-2 py-0.5 rounded-md mr-1 border border-pink-100">#${t.trim()}</span>`).join('') : `<span class="text-gray-300 text-[10px]">#태그 입력</span>`;
+                        const memoBadge = item.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
+                        let memoHtml = memoState === 'view' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">메모</span><button onclick="window.toggleMemo(event, '${item.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${item.memo || '메모가 없습니다.'}</p></div>` : (memoState === 'edit' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><textarea id="memo-input-${item.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${item.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${item.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${item.id}', 'muck')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div></div>` : '');
+                        catHtml += `<div class="bg-white p-4 rounded-2xl border shadow-sm hover:border-pink-200 cursor-pointer relative" onclick="window.toggleMemo(event, '${item.id}', 'view')">${memoBadge}<div class="flex justify-between items-center"><div class="flex items-start space-x-3"><div class="bg-pink-50 p-2.5 rounded-xl"><i data-lucide="${iconType}" class="w-5 h-5 text-pink-500"></i></div><div><h4 class="font-extrabold text-gray-800">${item.name}</h4><div class="mt-1.5 flex flex-wrap gap-1">${tags}</div></div></div>${item.mapUrl ? `<a href="${item.mapUrl}" target="_blank" onclick="event.stopPropagation()" class="p-2.5 bg-blue-50 text-blue-500 rounded-full"><i data-lucide="map-pin" class="w-4 h-4"></i></a>` : ''}</div>${memoHtml}</div>`;
                     }
                 });
-                if (isEditMode) { catHtml += `<button onclick="window.addMuckkit('${cat}')" class="w-full py-3 border-2 border-dashed border-pink-200 rounded-xl text-pink-500 text-xs font-bold mt-2 hover:bg-pink-50 transition-colors shadow-sm flex justify-center items-center"><i data-lucide="plus" class="w-4 h-4 mr-1"></i> ${cat} 추가하기</button>`; }
-                catHtml += `</div></div>`;
-                muckContainer.innerHTML += catHtml;
+                if (isEditMode) catHtml += `<button onclick="window.addMuckkit('${cat}')" class="w-full py-3 border-2 border-dashed border-pink-200 rounded-xl text-pink-500 text-xs font-bold mt-2 hover:bg-pink-50">+ ${cat} 추가</button>`;
+                muckContainer.innerHTML += catHtml + `</div></div>`;
             });
 
             // 2. 일정표 렌더링
@@ -353,25 +276,15 @@
                     let actHtml = `<div class="px-5 pb-6 pt-2 border-t border-pink-50/30"><div class="relative border-l-[1.5px] border-pink-100 ml-4 space-y-6 mt-4">`;
                     day.activities.forEach(act => {
                         if (isEditMode) {
-                            actHtml += `<div class="relative pl-6">
-                                <div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border-2 border-pink-200 flex items-center justify-center z-10 cursor-pointer hover:bg-pink-50" onclick="window.changeIcon('${day.id}', '${act.id}')"><i data-lucide="${act.type}" class="w-4 h-4 text-pink-600"></i></div>
-                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <div class="flex gap-2 mb-2"><input type="text" class="edit-input w-16 text-xs text-pink-500 font-bold" value="${act.time}" onchange="window.updateData('${day.id}', '${act.id}', 'time', this.value)"><input type="text" class="edit-input flex-1 text-sm font-bold" value="${act.title}" onchange="window.updateData('${day.id}', '${act.id}', 'title', this.value)"></div>
-                                    <input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${act.desc || ''}" placeholder="간단한 설명" onchange="window.updateData('${day.id}', '${act.id}', 'desc', this.value)">
-                                    <button onclick="window.deleteActivity('${day.id}', '${act.id}')" class="text-red-400 text-[10px] flex items-center"><i data-lucide="trash-2" class="w-3 h-3 mr-1"></i>삭제</button>
-                                </div>
-                            </div>`;
+                            actHtml += `<div class="relative pl-6"><div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border-2 border-pink-200 flex items-center justify-center z-10 cursor-pointer" onclick="window.changeIcon('${day.id}', '${act.id}')"><i data-lucide="${act.type}" class="w-4 h-4 text-pink-600"></i></div><div class="bg-slate-50 p-3 rounded-xl border"><div class="flex gap-2 mb-2"><input type="text" class="edit-input w-16 text-xs text-pink-500 font-bold" value="${act.time}" onchange="window.updateData('${day.id}', '${act.id}', 'time', this.value)"><input type="text" class="edit-input flex-1 text-sm font-bold" value="${act.title}" onchange="window.updateData('${day.id}', '${act.id}', 'title', this.value)"></div><input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${act.desc || ''}" onchange="window.updateData('${day.id}', '${act.id}', 'desc', this.value)" placeholder="설명"><button onclick="window.deleteActivity('${day.id}', '${act.id}')" class="text-red-400 text-[10px]">삭제</button></div></div>`;
                         } else {
                             const memoState = expandedMemos[act.id];
-                            const memoBadge = act.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white shadow-sm"></span>` : '';
-                            let memoHtml = memoState === 'view' ? `<div class="mt-3 pt-3 border-t border-gray-100" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">상세 메모</span><button onclick="window.toggleMemo(event, '${act.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3.5 h-3.5 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border border-slate-100">${act.memo || '작성된 메모가 없습니다.'}</p></div>` : (memoState === 'edit' ? `<div class="mt-3 pt-3 border-t border-gray-100" onclick="event.stopPropagation()"><textarea id="memo-input-${act.id}" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] min-h-[100px]">${act.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${act.id}', 'view')" class="px-3 py-1 text-xs bg-gray-100 rounded-lg">취소</button><button onclick="window.saveInlineMemo(event, '${day.id}', '${act.id}')" class="px-3 py-1 text-xs bg-pink-500 text-white rounded-lg">저장</button></div></div>` : '');
-                            actHtml += `<div class="relative pl-6">
-                                <div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border border-pink-50 shadow-sm flex items-center justify-center z-10"><i data-lucide="${act.type}" class="w-4 h-4 ${getIconColor(act.type)}"></i></div>
-                                <div class="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-pink-200 transition-all cursor-pointer relative" onclick="window.toggleMemo(event, '${act.id}', 'view')">${memoBadge}<div class="flex justify-between items-center"><div class="flex-1"><div class="text-[11px] font-bold text-pink-600 mb-1">${act.time}</div><h4 class="font-bold text-gray-800 text-[15px]">${act.title}</h4>${act.desc ? `<p class="text-xs text-gray-500 mt-1">${act.desc}</p>` : ''}</div><i data-lucide="chevron-right" class="w-4 h-4 text-gray-200 shrink-0 ${memoState ? 'rotate-90' : ''} transition-transform"></i></div>${memoHtml}</div>
-                            </div>`;
+                            const memoBadge = act.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
+                            let memoHtml = memoState === 'view' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">상세 메모</span><button onclick="window.toggleMemo(event, '${act.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${act.memo || '메모가 없습니다.'}</p></div>` : (memoState === 'edit' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><textarea id="memo-input-${act.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${act.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${act.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${act.id}', 'trip')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div></div>` : '');
+                            actHtml += `<div class="relative pl-6"><div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border shadow-sm flex items-center justify-center z-10"><i data-lucide="${act.type}" class="w-4 h-4 ${getIconColor(act.type)}"></i></div><div class="p-4 rounded-2xl bg-white border shadow-sm hover:border-pink-200 cursor-pointer relative" onclick="window.toggleMemo(event, '${act.id}', 'view')">${memoBadge}<div class="flex justify-between items-center"><div class="flex-1"><div class="text-[11px] font-bold text-pink-600 mb-1">${act.time}</div><h4 class="font-bold text-gray-800 text-[15px]">${act.title}</h4>${act.desc ? `<p class="text-xs text-gray-500 mt-1">${act.desc}</p>` : ''}</div><i data-lucide="chevron-right" class="w-4 h-4 text-gray-200 ${memoState ? 'rotate-90' : ''}"></i></div>${memoHtml}</div></div>`;
                         }
                     });
-                    if (isEditMode) { actHtml += `<button onclick="window.addActivity('${day.id}')" class="w-full py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs mt-4">+ 일정 추가</button>`; }
+                    if (isEditMode) actHtml += `<button onclick="window.addActivity('${day.id}')" class="w-full py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs mt-4">+ 일정 추가</button>`;
                     card.innerHTML += actHtml + `</div></div>`;
                 }
                 tripContainer.appendChild(card);
@@ -379,18 +292,14 @@
 
             // 3. 체크리스트 렌더링
             const chkContainer = document.getElementById('checklist-container');
-            chkContainer.innerHTML = `<div class="flex items-center mb-5"><div class="bg-pink-100 p-2 rounded-xl mr-3 shadow-sm"><i data-lucide="list-todo" class="w-5 h-5 text-pink-600"></i></div><h2 class="text-xl font-bold text-gray-800">체크리스트</h2></div>`;
+            chkContainer.innerHTML = `<div class="flex items-center mb-5"><div class="bg-pink-100 p-2 rounded-xl mr-3"><i data-lucide="list-todo" class="w-5 h-5 text-pink-600"></i></div><h2 class="text-xl font-bold text-gray-800">체크리스트</h2></div>`;
             checklistData.forEach(item => {
-                if (isEditMode) {
-                    chkContainer.innerHTML += `<div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm mb-2"><input type="text" class="edit-input flex-1 mr-3 text-sm text-gray-800 font-medium" value="${item.text}" onchange="window.updateChecklistData('${item.id}', this.value)" placeholder="항목 입력"><button onclick="window.deleteChecklistItem('${item.id}')" class="text-red-400 hover:text-red-600 p-1.5"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
-                } else {
-                    chkContainer.innerHTML += `<div class="flex items-center p-3 rounded-xl ${item.checked ? 'bg-slate-50' : 'bg-white shadow-sm border border-gray-100'} mb-2 cursor-pointer transition-colors" onclick="window.toggleChecklistItem('${item.id}')"><i data-lucide="${item.checked ? 'check-square' : 'square'}" class="w-5 h-5 mr-3 ${item.checked ? 'text-pink-400' : 'text-gray-300'}"></i><span class="${item.checked ? 'text-gray-400 line-through' : 'text-gray-800 font-medium'}">${item.text}</span></div>`;
-                }
+                if (isEditMode) chkContainer.innerHTML += `<div class="flex items-center bg-slate-50 p-2.5 rounded-xl border mb-2"><input type="text" class="edit-input flex-1 mr-3 text-sm" value="${item.text}" onchange="window.updateChecklistData('${item.id}', this.value)" placeholder="항목 입력"><button onclick="window.deleteChecklistItem('${item.id}')" class="text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
+                else chkContainer.innerHTML += `<div class="flex items-center p-3 rounded-xl ${item.checked ? 'bg-slate-50' : 'bg-white shadow-sm border'} mb-2 cursor-pointer" onclick="window.toggleChecklistItem('${item.id}')"><i data-lucide="${item.checked ? 'check-square' : 'square'}" class="w-5 h-5 mr-3 ${item.checked ? 'text-pink-400' : 'text-gray-300'}"></i><span class="${item.checked ? 'text-gray-400 line-through' : 'text-gray-800 font-medium'}">${item.text}</span></div>`;
             });
-            if (isEditMode) { chkContainer.innerHTML += `<button onclick="window.addChecklistItem()" class="w-full mt-3 py-2 border-2 border-dashed border-pink-200 text-pink-500 text-xs font-bold rounded-xl flex items-center justify-center"><i data-lucide="plus" class="w-4 h-4 mr-1"></i> 새 항목 추가</button>`; }
+            if (isEditMode) chkContainer.innerHTML += `<button onclick="window.addChecklistItem()" class="w-full mt-3 py-2 border-2 border-dashed border-pink-200 text-pink-500 font-bold rounded-xl">+ 항목 추가</button>`;
 
             lucide.createIcons();
-            // D-Day 계산 (기타큐슈 날짜 기준: 6월 28일)
             const dday = new Date(2026, 5, 28);
             const diff = Math.ceil((dday - new Date().setHours(0,0,0,0)) / (1000*60*60*24));
             document.getElementById('dday-badge').innerText = diff > 0 ? `D-${diff}` : (diff === 0 ? "D-Day 🎉" : `D+${Math.abs(diff)}`);
