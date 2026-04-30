@@ -20,7 +20,7 @@
         <div>데이터 동기화 중...</div>
     </div>
 
-    <div class="w-full max-w-md bg-[#FAFAFA] min-h-screen shadow-2xl relative pb-24 overflow-x-hidden">
+    <div id="app-container" class="w-full max-w-md bg-[#FAFAFA] min-h-screen shadow-2xl relative pb-24 overflow-x-hidden">
         <header class="bg-gradient-to-br from-pink-100 via-rose-50 to-blue-50 px-6 pt-12 pb-8 rounded-b-[40px] shadow-sm relative overflow-hidden">
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
             <div class="absolute top-10 -left-10 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
@@ -46,12 +46,10 @@
         </header>
 
         <main class="px-5 -mt-4 relative z-20">
-            <!-- 일정표 -->
             <div id="itinerary-view">
                 <div id="trip-container"></div>
             </div>
 
-            <!-- 먹킷리스트 -->
             <div id="muckkit-view" class="hidden pb-8">
                 <div class="flex items-center mb-6 px-1 mt-4">
                     <div class="bg-pink-100 p-2 rounded-xl mr-3 shadow-sm border border-pink-200/50">
@@ -62,23 +60,22 @@
                 <div id="muckkit-container" class="space-y-6 mt-2"></div>
             </div>
 
-            <!-- 체크리스트 -->
             <div id="checklist-view" class="hidden pb-8">
                 <div id="checklist-container" class="bg-white rounded-3xl shadow-sm border border-pink-50/50 p-5 mt-4"></div>
             </div>
         </main>
 
-        <!-- 네비게이션 -->
+        <!-- 하단 네비게이션 -->
         <div class="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-100 p-4 flex justify-around items-center text-gray-400 pb-6 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
-            <button id="nav-itinerary" class="flex flex-col items-center text-pink-500" onclick="window.switchTab('itinerary')">
+            <button id="nav-itinerary" class="flex flex-col items-center transition-all" onclick="window.switchTab('itinerary')">
                 <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i>
                 <span class="text-[10px] font-bold">일정표</span>
             </button>
-            <button id="nav-muckkit" class="flex flex-col items-center" onclick="window.switchTab('muckkit')">
+            <button id="nav-muckkit" class="flex flex-col items-center transition-all" onclick="window.switchTab('muckkit')">
                 <i data-lucide="utensils" class="w-6 h-6 mb-1"></i>
                 <span class="text-[10px] font-bold">먹킷리스트</span>
             </button>
-            <button id="nav-checklist" class="flex flex-col items-center" onclick="window.switchTab('checklist')">
+            <button id="nav-checklist" class="flex flex-col items-center transition-all" onclick="window.switchTab('checklist')">
                 <i data-lucide="list-todo" class="w-6 h-6 mb-1"></i>
                 <span class="text-[10px] font-bold">체크리스트</span>
             </button>
@@ -124,7 +121,7 @@
             });
         }
 
-        function saveHistory() {
+        window.saveHistory = function() {
             historyStack.push({ tripData: JSON.parse(JSON.stringify(tripData)), muckkitData: JSON.parse(JSON.stringify(muckkitData)), checklistData: JSON.parse(JSON.stringify(checklistData)) });
             if(historyStack.length > 20) historyStack.shift();
             updateUndoButtonState();
@@ -152,24 +149,21 @@
             render();
         };
 
-        window.switchTab = function(tab) { currentTab = tab; render(); };
+        window.switchTab = function(tab) { currentTab = tab; window.scrollTo(0,0); render(); };
         window.toggleDay = function(id) { if (openDays.includes(id)) openDays = openDays.filter(d => d !== id); else openDays.push(id); render(); };
 
-        // 아이콘 변경
         window.changeIcon = function(dayId, activityId) {
             const types = ['plane', 'ship', 'train', 'bus', 'utensils', 'shopping-bag', 'camera', 'heart', 'coffee'];
             const day = tripData.find(d => String(d.id) === String(dayId));
             const act = day.activities.find(a => String(a.id) === String(activityId));
-            if (act) { saveHistory(); const cur = types.indexOf(act.type); act.type = types[(cur + 1) % types.length]; render(); }
+            if (act) { window.saveHistory(); const cur = types.indexOf(act.type); act.type = types[(cur + 1) % types.length]; render(); }
         };
 
-        // 데이터 업데이트 (일정표)
         window.updateData = function(dayId, activityId, field, value) {
             const day = tripData.find(d => String(d.id) === String(dayId));
-            if (day) { saveHistory(); if (activityId === null) day[field] = value; else { const act = day.activities.find(a => String(a.id) === String(activityId)); if (act) act[field] = value; } }
+            if (day) { window.saveHistory(); if (activityId === null) day[field] = value; else { const act = day.activities.find(a => String(a.id) === String(activityId)); if (act) act[field] = value; } }
         };
 
-        // 메모 기능 (공통 사용)
         window.toggleMemo = function(e, id, state) {
             if (e) e.stopPropagation();
             expandedMemos[id] = (expandedMemos[id] === state) ? null : state;
@@ -179,7 +173,7 @@
         window.saveMemo = function(e, id, type) {
             if (e) e.stopPropagation();
             const val = document.getElementById(`memo-input-${id}`).value;
-            saveHistory();
+            window.saveHistory();
             if (type === 'muck') {
                 const item = muckkitData.find(m => String(m.id) === String(id));
                 if (item) item.memo = val;
@@ -192,53 +186,65 @@
             saveData(); expandedMemos[id] = 'view'; render();
         };
 
-        // 먹킷리스트 관리
         window.updateMuckkit = function(id, field, value) {
             const item = muckkitData.find(m => String(m.id) === String(id));
-            if (item) { saveHistory(); item[field] = value; }
+            if (item) { window.saveHistory(); item[field] = value; }
         };
 
         window.addMuckkit = function(category) {
-            saveHistory();
+            window.saveHistory();
             muckkitData.push({ id: Date.now(), category: category, name: "새로운 " + category, tags: "", memo: "", mapUrl: "" });
             render();
         };
 
         window.deleteMuckkit = function(id) {
-            saveHistory();
+            window.saveHistory();
             muckkitData = muckkitData.filter(m => String(m.id) !== String(id));
             render();
         };
 
-        // 일정표 관련 삭제/추가
         window.deleteActivity = function(dayId, actId) {
-            saveHistory();
+            window.saveHistory();
             const day = tripData.find(d => String(d.id) === String(dayId));
             if (day) { day.activities = day.activities.filter(a => String(a.id) !== String(actId)); render(); }
         };
 
         window.addActivity = function(dayId) {
-            saveHistory();
+            window.saveHistory();
             const day = tripData.find(d => String(d.id) === String(dayId));
             if (day) { day.activities.push({ id: Date.now(), time: "시간", title: "새 일정", type: "heart", desc: "", memo: "" }); render(); }
         };
 
-        // 체크리스트
         window.toggleChecklistItem = function(id) {
             if (isEditMode) return;
             const item = checklistData.find(i => String(i.id) === String(id));
-            if (item) { saveHistory(); item.checked = !item.checked; saveData(); render(); }
+            if (item) { window.saveHistory(); item.checked = !item.checked; saveData(); render(); }
         };
-        window.updateChecklistData = function(id, val) { saveHistory(); const item = checklistData.find(i => String(i.id) === String(id)); if (item) item.text = val; };
-        window.deleteChecklistItem = function(id) { saveHistory(); checklistData = checklistData.filter(i => String(i.id) !== String(id)); render(); };
-        window.addChecklistItem = function() { saveHistory(); checklistData.push({ id: 'c' + Date.now(), text: "", checked: false }); render(); };
+        window.updateChecklistData = function(id, val) { window.saveHistory(); const item = checklistData.find(i => String(i.id) === String(id)); if (item) item.text = val; };
+        window.deleteChecklistItem = function(id) { window.saveHistory(); checklistData = checklistData.filter(i => String(i.id) !== String(id)); render(); };
+        window.addChecklistItem = function() { window.saveHistory(); checklistData.push({ id: 'c' + Date.now(), text: "", checked: false }); render(); };
 
         function render() {
             document.getElementById('itinerary-view').style.display = currentTab === 'itinerary' ? 'block' : 'none';
             document.getElementById('muckkit-view').style.display = currentTab === 'muckkit' ? 'block' : 'none';
             document.getElementById('checklist-view').style.display = currentTab === 'checklist' ? 'block' : 'none';
 
-            // 1. 먹킷리스트 렌더링 (메모 기능 포함)
+            // 하단 내비게이션 탭 상태 반영 (이 부분 수정됨)
+            const navs = { itinerary: 'nav-itinerary', muckkit: 'nav-muckkit', checklist: 'nav-checklist' };
+            Object.keys(navs).forEach(key => {
+                const el = document.getElementById(navs[key]);
+                if (el) {
+                    if (key === currentTab) {
+                        el.classList.add('text-pink-500');
+                        el.classList.remove('text-gray-400');
+                    } else {
+                        el.classList.remove('text-pink-500');
+                        el.classList.add('text-gray-400');
+                    }
+                }
+            });
+
+            // 먹킷리스트 렌더링
             const muckContainer = document.getElementById('muckkit-container');
             muckContainer.innerHTML = '';
             ["식당", "카페", "군것질"].forEach(cat => {
@@ -260,7 +266,7 @@
                 muckContainer.innerHTML += catHtml + `</div></div>`;
             });
 
-            // 2. 일정표 렌더링
+            // 일정표 렌더링
             const tripContainer = document.getElementById('trip-container');
             tripContainer.innerHTML = '';
             tripData.forEach(day => {
@@ -290,7 +296,7 @@
                 tripContainer.appendChild(card);
             });
 
-            // 3. 체크리스트 렌더링
+            // 체크리스트 렌더링
             const chkContainer = document.getElementById('checklist-container');
             chkContainer.innerHTML = `<div class="flex items-center mb-5"><div class="bg-pink-100 p-2 rounded-xl mr-3"><i data-lucide="list-todo" class="w-5 h-5 text-pink-600"></i></div><h2 class="text-xl font-bold text-gray-800">체크리스트</h2></div>`;
             checklistData.forEach(item => {
