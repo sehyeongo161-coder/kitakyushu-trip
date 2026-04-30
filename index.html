@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>우리의 기타큐슈 여행</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { -webkit-font-smoothing: antialiased; background-color: #f8fafc; display: flex; justify-content: center; font-family: sans-serif; }
+        button, a, div { -webkit-tap-highlight-color: transparent; outline: none; }
+        .edit-input { width: 100%; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 4px; padding: 4px 6px; font-size: inherit; font-family: inherit; color: inherit; font-weight: inherit; transition: all 0.2s; }
+        .edit-input:focus { outline: 2px solid #f472b6; border-color: transparent; background: white; }
+        .modal-bg { transition: opacity 0.3s ease-out; }
+        .modal-content { transition: transform 0.3s ease-out; }
+        #loading-screen { position: fixed; inset: 0; background: white; z-index: 1000; display: flex; align-items: center; justify-content: center; color: #f472b6; font-weight: bold; flex-direction: column; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div>데이터 동기화 중...</div>
+    </div>
+
+    <div class="w-full max-w-md bg-[#FAFAFA] min-h-screen shadow-2xl relative pb-24 overflow-x-hidden">
+        <header class="bg-gradient-to-br from-pink-100 via-rose-50 to-blue-50 px-6 pt-12 pb-8 rounded-b-[40px] shadow-sm relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
+            <div class="absolute top-10 -left-10 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
+            
+            <div class="relative z-10 flex justify-between items-start">
+                <div>
+                    <div class="flex items-center text-pink-500 mb-2">
+                        <i data-lucide="heart" class="w-[18px] h-[18px] fill-pink-500 text-pink-500 mr-2"></i>
+                        <span class="text-sm font-semibold tracking-wider">COUPLE TRIP</span>
+                        <span id="dday-badge" class="ml-2 px-2.5 py-0.5 bg-pink-500 text-white text-xs font-bold rounded-full shadow-sm">계산중...</span>
+                    </div>
+                    <h1 class="text-3xl font-extrabold text-gray-800 leading-tight">우리의<br />기타큐슈 여행</h1>
+                </div>
+                <div class="flex items-center space-x-2 mt-2">
+                    <button id="undo-btn" class="bg-white/80 p-2 rounded-full shadow-sm text-gray-400 hover:text-indigo-500 transition-colors backdrop-blur-sm disabled:opacity-30 disabled:hover:text-gray-400" onclick="window.undoAction()" disabled>
+                        <i data-lucide="undo-2" class="w-5 h-5"></i>
+                    </button>
+                    <button id="edit-toggle-btn" class="bg-white/80 p-2 rounded-full shadow-sm text-gray-600 hover:text-pink-500 transition-colors backdrop-blur-sm" onclick="window.toggleEditMode()">
+                        <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="edit-notice" class="hidden mt-4 text-xs font-bold text-pink-600 bg-white/70 px-3 py-2 rounded-lg backdrop-blur-sm shadow-sm text-center">
+                ✏️ 편집 모드: 수정 완료 후 꼭 우측 상단 체크(✔) 버튼을 누르세요!
+            </div>
+        </header>
+
+        <main class="px-5 -mt-4 relative z-20">
+            <div id="itinerary-view">
+                <div id="trip-container"></div>
+                <a href="https://maps.app.goo.gl/3NnJcWz3o2zEwAEx6" target="_blank" class="block mt-4 mb-8 bg-blue-50 border border-blue-100 rounded-2xl p-5 flex items-start space-x-4 shadow-sm hover:bg-blue-100 transition-colors">
+                    <div class="bg-blue-200 p-3 rounded-full text-blue-600 flex-shrink-0"><i data-lucide="shopping-bag" class="w-6 h-6"></i></div>
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-sm mb-1 flex items-center">잊지 마세요! <i data-lucide="map-pin" class="w-3 h-3 ml-1 text-blue-500"></i></h4>
+                        <p class="text-xs text-gray-600 leading-relaxed">여행 중간 시간 날 때 <strong class="text-blue-600">돈키호테 고쿠라점</strong>에 들러 쇼핑하기!</p>
+                    </div>
+                </a>
+            </div>
+
+            <div id="checklist-view" class="hidden pb-8">
+                <div id="checklist-container" class="bg-white rounded-3xl shadow-sm border border-pink-50/50 p-5 mt-2"></div>
+            </div>
+        </main>
+
+        <div id="detail-modal" class="hidden fixed inset-0 z-[100] flex items-end justify-center modal-bg bg-black/40 backdrop-blur-sm opacity-0" onclick="window.closeModal(event)">
+            <div id="detail-modal-content" class="bg-white w-full max-w-md rounded-t-[30px] p-6 pb-12 shadow-2xl modal-content transform translate-y-full flex flex-col max-h-[85vh]" onclick="event.stopPropagation()"></div>
+        </div>
+
+        <div class="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-100 p-4 flex justify-around items-center text-gray-400 pb-6 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
+            <button id="nav-itinerary" class="flex flex-col items-center text-pink-500 transition-colors" onclick="window.switchTab('itinerary')"><i data-lucide="calendar-days" class="w-6 h-6"></i><span class="text-[10px] mt-1 font-medium">일정표</span></button>
+            <button id="nav-checklist" class="flex flex-col items-center hover:text-gray-800 transition-colors" onclick="window.switchTab('checklist')"><i data-lucide="list-todo" class="w-6 h-6"></i><span class="text-[10px] mt-1 font-medium">체크리스트</span></button>
+            <a href="https://www.google.com/maps/search/기타큐슈" target="_blank" class="flex flex-col items-center hover:text-gray-800 transition-colors"><i data-lucide="map" class="w-6 h-6"></i><span class="text-[10px] mt-1 font-medium">지도 검색</span></a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC56qGPGXTnYBpQNdrdv2gt6TlkPvzTz-8",
+            authDomain: "kitakyushu-trip.firebaseapp.com",
+            projectId: "kitakyushu-trip",
+            storageBucket: "kitakyushu-trip.firebasestorage.app",
+            messagingSenderId: "883462812612",
+            appId: "1:883462812612:web:ebb0479fcafb1c807f2a91"
+        };
+        
+        let app, db;
+
+        function updateDday() {
+            const dday = new Date(2026, 5, 28);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); 
+            const diffTime = dday.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let text = "";
+            if (diffDays > 0) text = `D-${diffDays}`;
+            else if (diffDays === 0) text = `D-Day 🎉`;
+            else text = `D+${Math.abs(diffDays)}`;
+            document.getElementById('dday-badge').innerText = text;
+        }
+
+        const defaultData = [
+            { id: 1, day: "1일차", date: "6월 28일", theme: "기타큐슈 입성 & 이자카야의 밤", activities: [{ id: 101, time: "09:20", title: "전주 ➔ 인천공항", type: "bus", desc: "여유롭게 출발!", mapUrl: "", memo: "" }, { id: 102, time: "15:45", title: "인천 공항 ➔ 기타큐슈 공항", type: "plane", desc: "비행기 탑승", mapUrl: "", memo: "" }] },
+            { id: 2, day: "2일차", date: "6월 29일", theme: "모지코 & 시모노세키 투어", activities: [{ id: 201, time: "점심", title: "야끼카레 🍛", type: "utensils", desc: "명물 맛보기", mapUrl: "", memo: "" }] },
+            { id: 3, day: "3일차", date: "6월 30일", theme: "후쿠오카 핫플 투어", activities: [] },
+            { id: 4, day: "4일차", date: "7월 1일", theme: "귀국 & 쇼핑", activities: [] }
+        ];
+
+        const defaultChecklist = [
+            { id: "c1", text: "여권 챙기기", checked: false },
+            { id: "c2", text: "돼지코(어댑터) 챙기기", checked: false }
+        ];
+
+        let tripData = [];
+        let checklistData = [];
+        let openDays = [1, 2]; 
+        let isEditMode = false;
+        let currentTab = 'itinerary';
+        let historyStack = []; 
+
+        const iconTypes = ['heart', 'plane', 'bus', 'train-front', 'utensils', 'music', 'shopping-bag', 'camera', 'coffee', 'map-pin'];
+        const getIconColor = (type) => {
+            switch (type) {
+                case 'plane': return 'text-blue-500'; case 'bus': return 'text-emerald-500'; case 'train-front': return 'text-indigo-500'; case 'utensils': return 'text-orange-500'; case 'music': return 'text-purple-500'; case 'shopping-bag': return 'text-pink-500'; case 'camera': return 'text-teal-500'; case 'coffee': return 'text-amber-600'; case 'map-pin': return 'text-red-500'; default: return 'text-rose-400';
+            }
+        };
+
+        function hideLoadingScreen() {
+            const ls = document.getElementById('loading-screen');
+            if (ls) ls.style.display = 'none';
+        }
+
+        async function initFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                const docRef = doc(db, 'trips', 'kitakyushu'); 
+                
+                onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.tripData) tripData = JSON.parse(data.tripData);
+                        if (data.checklistData) checklistData = JSON.parse(data.checklistData);
+                        render();
+                    } else {
+                        saveData();
+                    }
+                    hideLoadingScreen();
+                }, (error) => {
+                    console.error("데이터 동기화 에러:", error);
+                    hideLoadingScreen();
+                    let fixGuide = "";
+                    if (error.message.includes("Missing or insufficient permissions")) {
+                        fixGuide = "👉 파이어베이스 콘솔 -> <b>[Firestore Database]</b> -> <b>[규칙(Rules)]</b> 탭에서 코드를 <b>allow read, write: if true;</b> 로 고친 후 반드시 <b>[게시]</b> 버튼을 누르세요!";
+                    } else {
+                        fixGuide = "👉 파이어베이스에서 아직 <b>[Firestore Database 만들기]</b> 버튼을 누르지 않으셨거나 데이터베이스 위치가 다를 수 있습니다.";
+                    }
+                    
+                    document.getElementById('loading-screen').style.display = 'flex';
+                    document.getElementById('loading-screen').innerHTML = `
+                        <div class="text-center p-6 max-w-sm w-full mx-auto">
+                            <span class="text-4xl mb-4 block">🚨</span>
+                            <p class="font-bold text-lg text-rose-500 mb-2">서버 연결이 거부되었습니다!</p>
+                            <p class="text-sm text-gray-700 bg-gray-100 p-4 rounded-xl leading-relaxed text-left break-keep shadow-inner mb-4">${fixGuide}</p>
+                            <p class="text-[10px] text-gray-400 break-all border border-gray-200 p-2 rounded">상세 에러: ${error.message}</p>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                console.error("Firebase 초기화 에러:", e);
+                hideLoadingScreen();
+            }
+        }
+
+        async function saveData() {
+            try {
+                const docRef = doc(db, 'trips', 'kitakyushu');
+                await setDoc(docRef, {
+                    tripData: JSON.stringify(tripData),
+                    checklistData: JSON.stringify(checklistData)
+                });
+            } catch (e) { console.error("데이터 저장 실패:", e); }
+        }
+
+        function saveHistory() {
+            historyStack.push({ tripData: JSON.parse(JSON.stringify(tripData)), checklistData: JSON.parse(JSON.stringify(checklistData)) });
+            if(historyStack.length > 20) historyStack.shift(); 
+            updateUndoButtonState();
+        }
+
+        function updateUndoButtonState() {
+            const btn = document.getElementById('undo-btn');
+            if (historyStack.length > 0) { btn.removeAttribute('disabled'); btn.classList.add('text-indigo-500'); btn.classList.remove('text-gray-400'); } 
+            else { btn.setAttribute('disabled', 'true'); btn.classList.remove('text-indigo-500'); btn.classList.add('text-gray-400'); }
+        }
+
+        window.undoAction = function() {
+            if (historyStack.length === 0) return;
+            const prevState = historyStack.pop();
+            tripData = prevState.tripData; checklistData = prevState.checklistData;
+            saveData(); updateUndoButtonState(); render();
+        };
+
+        window.switchTab = function(tab) { currentTab = tab; window.scrollTo(0,0); render(); };
+
+        window.toggleEditMode = function() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('edit-toggle-btn');
+            const notice = document.getElementById('edit-notice');
+            
+            if (isEditMode) {
+                btn.classList.add('bg-pink-100', 'text-pink-600'); btn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i>'; notice.classList.remove('hidden');
+            } else {
+                btn.classList.remove('bg-pink-100', 'text-pink-600'); btn.innerHTML = '<i data-lucide="edit-3" class="w-5 h-5"></i>'; notice.classList.add('hidden');
+                saveData(); 
+            }
+            lucide.createIcons(); render();
+        };
+
+        window.toggleDay = function(id) {
+            if (openDays.includes(id)) { openDays = openDays.filter(dayId => dayId !== id); } else { openDays.push(id); }
+            render();
+        };
+
+        window.updateData = function(dayId, activityId, field, value) {
+            const day = tripData.find(d => String(d.id) === String(dayId));
+            if(!day) return;
+            let oldValue;
+            if (activityId === null) { oldValue = day[field]; } else { const activity = day.activities.find(a => String(a.id) === String(activityId)); if(activity) oldValue = activity[field]; }
+            if (oldValue !== value) {
+                saveHistory(); 
+                if (activityId === null) { day[field] = value; } else { const activity = day.activities.find(a => String(a.id) === String(activityId)); if(activity) activity[field] = value; }
+                saveData(); 
+            }
+        };
+
+        window.deleteActivity = function(dayId, activityId) {
+            saveHistory(); const day = tripData.find(d => String(d.id) === String(dayId));
+            if(day) { day.activities = day.activities.filter(a => String(a.id) !== String(activityId)); saveData(); render(); }
+        };
+
+        window.moveActivity = function(dayId, activityId, direction) {
+            const day = tripData.find(d => String(d.id) === String(dayId)); if(!day) return;
+            const index = day.activities.findIndex(a => String(a.id) === String(activityId)); if (index < 0) return;
+            const newIndex = index + direction; if (newIndex < 0 || newIndex >= day.activities.length) return;
+            saveHistory(); const temp = day.activities[index]; day.activities[index] = day.activities[newIndex]; day.activities[newIndex] = temp;
+            saveData(); render();
+        };
+
+        window.addActivity = function(dayId) {
+            const day = tripData.find(d => String(d.id) === String(dayId)); if(!day) return;
+            saveHistory(); const newId = Date.now();
+            day.activities.push({ id: newId, time: "시간", title: "새로운 일정", type: "heart", desc: "", mapUrl: "", memo: "" });
+            saveData(); if (!openDays.includes(dayId)) openDays.push(dayId); render();
+        };
+
+        window.changeIcon = function(dayId, activityId) {
+            if(!isEditMode) return; const day = tripData.find(d => String(d.id) === String(dayId)); const activity = day.activities.find(a => String(a.id) === String(activityId)); if(!activity) return;
+            saveHistory(); const currentIndex = iconTypes.indexOf(activity.type); const nextIndex = (currentIndex + 1) % iconTypes.length; activity.type = iconTypes[nextIndex];
+            saveData(); render();
+        };
+
+        window.openModal = function(dayId, actId) {
+            if(isEditMode) return; 
+            const day = tripData.find(d => String(d.id) === String(dayId)); const act = day.activities.find(a => String(a.id) === String(actId)); if(!act) return;
+            const modal = document.getElementById('detail-modal'); const content = document.getElementById('detail-modal-content');
+            let mapBtnHtml = act.mapUrl ? `<a href="${act.mapUrl}" target="_blank" class="mt-4 flex items-center justify-center w-full py-3 bg-blue-50 text-blue-600 font-bold rounded-xl hover:bg-blue-100 transition-colors shadow-sm"><i data-lucide="map-pin" class="w-5 h-5 mr-2"></i> 구글맵으로 위치 보기</a>` : '';
+
+            content.innerHTML = `
+                <div class="flex justify-between items-start mb-4 flex-shrink-0">
+                    <div><div class="text-pink-500 font-bold text-sm mb-1">${act.time || '시간 미정'}</div><h2 class="text-2xl font-extrabold text-gray-800 leading-tight pr-2">${act.title}</h2>${act.desc ? `<p class="text-gray-500 text-sm mt-1">${act.desc}</p>` : ''}</div>
+                    <button onclick="window.closeModal(event)" class="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors flex-shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                ${mapBtnHtml}
+                <div class="mt-6 flex-1 flex flex-col min-h-[200px]">
+                    <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center"><i data-lucide="notebook-pen" class="w-4 h-4 mr-1 text-pink-400"></i> 상세 설정 및 메모장</label>
+                    <textarea id="modal-memo-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 flex-1 text-sm text-gray-700 focus:outline-none focus:border-pink-300 focus:ring-1 focus:ring-pink-300 resize-none shadow-inner" placeholder="이곳을 터치해서 예약번호, 메뉴 등을 자유롭게 기록하세요." oninput="window.updateMemo('${day.id}', '${act.id}', this.value)">${act.memo || ''}</textarea>
+                    <p class="text-[10px] text-gray-400 mt-2 text-center">글자를 적는 즉시 자동 저장됩니다.</p>
+                </div>
+            `;
+            lucide.createIcons(); modal.classList.remove('hidden'); requestAnimationFrame(() => { modal.classList.remove('opacity-0'); content.classList.remove('translate-y-full'); });
+        };
+
+        window.closeModal = function(e) {
+            if (e && e.target.id !== 'detail-modal' && e.target.closest('button') === null) return; 
+            const modal = document.getElementById('detail-modal'); const content = document.getElementById('detail-modal-content');
+            modal.classList.add('opacity-0'); content.classList.add('translate-y-full');
+            setTimeout(() => { modal.classList.add('hidden'); render(); }, 300);
+        };
+
+        window.updateMemo = function(dayId, actId, value) {
+            const day = tripData.find(d => String(d.id) === String(dayId)); const act = day.activities.find(a => String(a.id) === String(actId));
+            if(act) { act.memo = value; saveData(); }
+        };
+
+        window.toggleChecklistItem = function(id) {
+            if (isEditMode) return; saveHistory(); const item = checklistData.find(i => String(i.id) === String(id)); if (item) item.checked = !item.checked; saveData(); render();
+        };
+
+        window.updateChecklistData = function(id, value) {
+            const item = checklistData.find(i => String(i.id) === String(id)); if (!item || item.text === value) return; saveHistory(); item.text = value; saveData();
+        };
+
+        window.deleteChecklistItem = function(id) { saveHistory(); checklistData = checklistData.filter(i => String(i.id) !== String(id)); saveData(); render(); };
+
+        window.moveChecklistItem = function(id, direction) {
+            const index = checklistData.findIndex(i => String(i.id) === String(id)); if (index < 0) return;
+            const newIndex = index + direction; if (newIndex < 0 || newIndex >= checklistData.length) return;
+            saveHistory(); const temp = checklistData[index]; checklistData[index] = checklistData[newIndex]; checklistData[newIndex] = temp; saveData(); render();
+        };
+
+        window.addChecklistItem = function() { saveHistory(); checklistData.push({ id: 'c' + Date.now(), text: "", checked: false }); saveData(); render(); };
+
+        function render() {
+            document.getElementById('itinerary-view').style.display = currentTab === 'itinerary' ? 'block' : 'none';
+            document.getElementById('checklist-view').style.display = currentTab === 'checklist' ? 'block' : 'none';
+            
+            const navItin = document.getElementById('nav-itinerary'); const navCheck = document.getElementById('nav-checklist');
+            if (currentTab === 'itinerary') { navItin.classList.add('text-pink-500'); navItin.classList.remove('text-gray-400'); navCheck.classList.remove('text-pink-500'); navCheck.classList.add('text-gray-400'); } 
+            else { navCheck.classList.add('text-pink-500'); navCheck.classList.remove('text-gray-400'); navItin.classList.remove('text-pink-500'); navItin.classList.add('text-gray-400'); }
+
+            const checklistContainer = document.getElementById('checklist-container');
+            let chkHtml = '<h2 class="text-xl font-bold text-gray-800 mb-5 flex items-center"><i data-lucide="list-todo" class="w-6 h-6 mr-2 text-pink-500"></i> 여행 체크리스트</h2><div class="space-y-3">';
+            checklistData.forEach((item, index) => {
+                const isFirst = index === 0; const isLast = index === checklistData.length - 1;
+                if (isEditMode) {
+                    chkHtml += `
+                        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm">
+                            <input type="text" class="edit-input flex-1 mr-3 text-base text-gray-800 font-medium" value="${item.text}" onchange="window.updateChecklistData('${item.id}', this.value)" placeholder="체크리스트 항목을 적어주세요">
+                            <div class="flex items-center space-x-1 bg-white rounded-md px-1 shadow-sm border border-slate-200">
+                                <button onclick="window.moveChecklistItem('${item.id}', -1)" class="text-gray-500 hover:text-indigo-500 p-1.5 disabled:opacity-20" ${isFirst ? 'disabled' : ''}><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+                                <button onclick="window.moveChecklistItem('${item.id}', 1)" class="text-gray-500 hover:text-indigo-500 p-1.5 disabled:opacity-20" ${isLast ? 'disabled' : ''}><i data-lucide="arrow-down" class="w-4 h-4"></i></button>
+                                <div class="w-[1px] h-4 bg-slate-200 mx-1"></div>
+                                <button onclick="window.deleteChecklistItem('${item.id}')" class="text-red-400 hover:text-red-600 p-1.5"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const checkIcon = item.checked ? 'check-square' : 'square'; const textClass = item.checked ? 'text-gray-400 line-through' : 'text-gray-800 font-medium'; const iconColor = item.checked ? 'text-pink-400' : 'text-gray-300';
+                    chkHtml += `
+                        <div class="flex items-center p-3 rounded-xl hover:bg-pink-50/50 cursor-pointer transition-colors border border-transparent ${item.checked ? 'bg-slate-50' : 'bg-white shadow-sm border-slate-100'}" onclick="window.toggleChecklistItem('${item.id}')">
+                            <i data-lucide="${checkIcon}" class="w-6 h-6 mr-3 ${iconColor} transition-colors flex-shrink-0"></i>
+                            <span class="${textClass} transition-all text-base leading-tight">${item.text}</span>
+                        </div>
+                    `;
+                }
+            });
+            chkHtml += '</div>';
+            if (isEditMode) { chkHtml += `<button onclick="window.addChecklistItem()" class="w-full mt-5 py-3 border-2 border-dashed border-pink-200 text-pink-500 font-bold rounded-xl hover:bg-pink-50 hover:border-pink-300 transition-colors flex items-center justify-center"><i data-lucide="plus" class="w-5 h-5 mr-1"></i> 새 항목 추가</button>`; }
+            checklistContainer.innerHTML = chkHtml;
+
+            const container = document.getElementById('trip-container'); container.innerHTML = '';
+            tripData.forEach(dayData => {
+                const isOpen = openDays.includes(dayData.id); const card = document.createElement('div'); card.className = "bg-white rounded-3xl shadow-sm border border-pink-50/50 mb-4 overflow-hidden transition-all duration-300";
+                const header = document.createElement('div'); header.className = "w-full flex items-center justify-between p-5 bg-gradient-to-r from-white to-pink-50/30 transition-colors";
+                const themeHtml = isEditMode ? `<input type="text" class="edit-input mt-2 text-lg font-bold text-gray-800" value="${dayData.theme}" onchange="window.updateData('${dayData.id}', null, 'theme', this.value)">` : `<h3 class="mt-2 text-lg font-bold text-gray-800">${dayData.theme}</h3>`;
+                header.innerHTML = `
+                    <div class="flex flex-col items-start text-left w-[85%]">
+                        <div class="flex items-center space-x-2"><span class="text-sm font-bold text-pink-500 bg-pink-100 px-3 py-1 rounded-full">${dayData.day}</span><span class="text-gray-500 text-sm font-medium">${dayData.date}</span></div>
+                        ${themeHtml}
+                    </div>
+                    <button class="p-2 bg-white rounded-full shadow-sm text-gray-400 flex-shrink-0 ml-2 z-10 hover:text-pink-500" onclick="window.toggleDay('${dayData.id}')"><i data-lucide="${isOpen ? 'chevron-up' : 'chevron-down'}" class="w-5 h-5"></i></button>
+                `;
+                if(!isEditMode) { header.onclick = () => window.toggleDay(dayData.id); header.classList.add('cursor-pointer'); }
+                card.appendChild(header);
+
+                if (isOpen) {
+                    const body = document.createElement('div'); body.className = "px-5 pb-6 pt-2 bg-white";
+                    const timelineList = document.createElement('div'); timelineList.className = "relative border-l-[1.5px] border-pink-100 ml-4 space-y-6 mt-4";
+
+                    dayData.activities.forEach((act, index) => {
+                        const isFirst = index === 0; const isLast = index === dayData.activities.length - 1; const item = document.createElement('div'); item.className = "relative pl-6";
+                        const iconBg = isEditMode ? 'bg-white cursor-pointer hover:bg-slate-50 border border-slate-200 shadow-sm' : 'bg-white shadow-sm border border-pink-50';
+                        const iconHtml = `
+                            <div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full flex items-center justify-center z-10 transition-colors ${iconBg}" ${isEditMode ? `onclick="window.changeIcon('${dayData.id}', '${act.id}')" title="아이콘 변경"` : ''}>
+                                <i data-lucide="${act.type}" class="w-[18px] h-[18px] ${getIconColor(act.type)} fill-current opacity-20 absolute"></i>
+                                <i data-lucide="${act.type}" class="w-4 h-4 ${getIconColor(act.type)} relative z-10"></i>
+                            </div>
+                        `;
+
+                        if (isEditMode) {
+                            item.innerHTML = `
+                                ${iconHtml}
+                                <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 shadow-sm mb-2">
+                                    <div class="flex gap-2 mb-2.5">
+                                        <input type="text" class="edit-input w-20 text-sm font-bold text-pink-500 text-center" value="${act.time}" placeholder="시간" onchange="window.updateData('${dayData.id}', '${act.id}', 'time', this.value)">
+                                        <input type="text" class="edit-input flex-1 font-bold text-gray-800" value="${act.title}" placeholder="일정 제목" onchange="window.updateData('${dayData.id}', '${act.id}', 'title', this.value)">
+                                    </div>
+                                    <input type="text" class="edit-input w-full text-xs text-gray-500 mb-2.5" value="${act.desc}" placeholder="간단한 설명 (선택)" onchange="window.updateData('${dayData.id}', '${act.id}', 'desc', this.value)">
+                                    <input type="text" class="edit-input w-full text-[11px] text-blue-500 mb-2" value="${act.mapUrl || ''}" placeholder="구글맵 URL (선택)" onchange="window.updateData('${dayData.id}', '${act.id}', 'mapUrl', this.value)">
+                                    <div class="flex justify-end items-center space-x-1 mt-3 bg-white p-1 rounded-lg w-max ml-auto border border-slate-100">
+                                        <button onclick="window.moveActivity('${dayData.id}', '${act.id}', -1)" class="p-1.5 text-gray-400 hover:text-indigo-500 rounded-md disabled:opacity-20" ${isFirst ? 'disabled' : ''}><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+                                        <button onclick="window.moveActivity('${dayData.id}', '${act.id}', 1)" class="p-1.5 text-gray-400 hover:text-indigo-500 rounded-md disabled:opacity-20" ${isLast ? 'disabled' : ''}><i data-lucide="arrow-down" class="w-4 h-4"></i></button>
+                                        <div class="w-[1px] h-3 bg-slate-200 mx-1"></div>
+                                        <button onclick="window.deleteActivity('${dayData.id}', '${act.id}')" class="p-1.5 text-red-400 hover:text-red-600 rounded-md"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            const memoBadge = act.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white shadow-sm" title="메모 있음"></span>` : '';
+                            item.innerHTML = `
+                                ${iconHtml}
+                                <div class="group cursor-pointer block p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-pink-200 transition-all duration-200 relative" onclick="window.openModal('${dayData.id}', '${act.id}')">
+                                    ${memoBadge}
+                                    <div class="flex justify-between items-center pr-2">
+                                        <div class="flex-1">
+                                            <div class="text-[11px] font-bold text-pink-500 mb-1 tracking-wide">${act.time}</div>
+                                            <h4 class="font-bold text-gray-800 text-[15px] leading-tight">${act.title}</h4>
+                                            ${act.desc ? `<p class="text-xs text-gray-500 mt-1.5 leading-relaxed break-keep">${act.desc}</p>` : ''}
+                                        </div>
+                                        <div class="flex-shrink-0 ml-3 text-gray-200 group-hover:text-pink-400 transition-colors bg-gray-50 group-hover:bg-pink-50 p-1.5 rounded-full"><i data-lucide="chevron-right" class="w-4 h-4"></i></div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        timelineList.appendChild(item);
+                    });
+
+                    body.appendChild(timelineList);
+                    if (isEditMode) {
+                        const addBtn = document.createElement('button'); addBtn.className = "w-full mt-6 py-3 border-2 border-dashed border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-500 transition-colors flex items-center justify-center";
+                        addBtn.innerHTML = `<i data-lucide="plus" class="w-5 h-5 mr-1"></i> 새 일정 추가`; addBtn.onclick = () => window.addActivity(dayData.id); body.appendChild(addBtn);
+                    }
+                    card.appendChild(body);
+                }
+                container.appendChild(card);
+            });
+
+            lucide.createIcons(); updateDday(); updateUndoButtonState();
+        }
+
+        window.onload = () => {
+            tripData = JSON.parse(JSON.stringify(defaultData));
+            checklistData = JSON.parse(JSON.stringify(defaultChecklist));
+            updateDday();
+            render();
+            initFirebase();
+
+            // 8초 후에도 로딩 화면이 남아있으면 강제로 숨김
+            setTimeout(() => {
+                const ls = document.getElementById('loading-screen');
+                if (ls && ls.style.display !== 'none') {
+                    hideLoadingScreen();
+                    console.warn('Firebase 연결 타임아웃 - 로컬 데이터로 실행됩니다.');
+                }
+            }, 8000);
+        };
+    </script>
+</body>
+</html>
