@@ -20,7 +20,8 @@
         <div>데이터 동기화 중...</div>
     </div>
 
-    <div id="app-container" class="w-full max-w-md bg-[#FAFAFA] min-h-screen shadow-2xl relative pb-24 overflow-x-hidden">
+    <div class="w-full max-w-md bg-[#FAFAFA] min-h-screen shadow-2xl relative pb-24 overflow-x-hidden">
+        <!-- 헤더 -->
         <header class="bg-gradient-to-br from-pink-100 via-rose-50 to-blue-50 px-6 pt-12 pb-8 rounded-b-[40px] shadow-sm relative overflow-hidden">
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
             <div class="absolute top-10 -left-10 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
@@ -193,6 +194,7 @@
 
         window.addMuckkit = function(category) {
             window.saveHistory();
+            // 태그 기본값을 완전히 비워둠으로써 placeholder가 작동하게 함
             muckkitData.push({ id: Date.now(), category: category, name: "새로운 " + category, tags: "", memo: "", mapUrl: "" });
             render();
         };
@@ -229,7 +231,7 @@
             document.getElementById('muckkit-view').style.display = currentTab === 'muckkit' ? 'block' : 'none';
             document.getElementById('checklist-view').style.display = currentTab === 'checklist' ? 'block' : 'none';
 
-            // 하단 내비게이션 탭 상태 반영 (이 부분 수정됨)
+            // 하단 내비게이션 탭 상태 반영
             const navs = { itinerary: 'nav-itinerary', muckkit: 'nav-muckkit', checklist: 'nav-checklist' };
             Object.keys(navs).forEach(key => {
                 const el = document.getElementById(navs[key]);
@@ -253,10 +255,14 @@
                 let catHtml = `<div class="mb-6"><div class="flex items-center space-x-2 bg-white border border-pink-100 px-4 py-1.5 rounded-full w-max mb-3"><i data-lucide="${iconType}" class="w-4 h-4 text-pink-500"></i><h3 class="text-[13px] font-extrabold text-pink-600">${cat}</h3></div><div class="space-y-3">`;
                 items.forEach(item => {
                     if (isEditMode) {
-                        catHtml += `<div class="bg-white p-4 rounded-2xl border-2 border-pink-100 shadow-sm"><div class="flex gap-2 mb-3"><i data-lucide="${iconType}" class="w-4 h-4 text-pink-400 mt-1"></i><input type="text" class="edit-input flex-1 font-bold text-sm bg-pink-50/30" value="${item.name}" onchange="window.updateMuckkit('${item.id}', 'name', this.value)"></div><input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${item.tags}" placeholder="#태그 입력" onchange="window.updateMuckkit('${item.id}', 'tags', this.value)"><div class="flex justify-between items-center"><div class="flex-1 mr-2 flex bg-gray-50 rounded p-1 border"><i data-lucide="map-pin" class="w-3 h-3 text-gray-400 mx-1"></i><input type="text" class="edit-input flex-1 text-[10px] text-blue-500 border-none bg-transparent p-0" value="${item.mapUrl}" placeholder="구글맵 URL" onchange="window.updateMuckkit('${item.id}', 'mapUrl', this.value)"></div><button onclick="window.deleteMuckkit('${item.id}')" class="text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+                        catHtml += `<div class="bg-white p-4 rounded-2xl border-2 border-pink-100 shadow-sm"><div class="flex gap-2 mb-3"><i data-lucide="${iconType}" class="w-4 h-4 text-pink-400 mt-1"></i><input type="text" class="edit-input flex-1 font-bold text-sm bg-pink-50/30" value="${item.name}" onchange="window.updateMuckkit('${item.id}', 'name', this.value)"></div>
+                        <!-- 태그 입력: # 자동 생성을 없애고 쌩 텍스트만 받도록 placeholder 적용 -->
+                        <input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${item.tags}" placeholder="태그 입력 (예: 고쿠라, 라멘, 가성비)" onchange="window.updateMuckkit('${item.id}', 'tags', this.value)">
+                        <div class="flex justify-between items-center"><div class="flex-1 mr-2 flex bg-gray-50 rounded p-1 border"><i data-lucide="map-pin" class="w-3 h-3 text-gray-400 mx-1"></i><input type="text" class="edit-input flex-1 text-[10px] text-blue-500 border-none bg-transparent p-0" value="${item.mapUrl}" placeholder="구글맵 URL" onchange="window.updateMuckkit('${item.id}', 'mapUrl', this.value)"></div><button onclick="window.deleteMuckkit('${item.id}')" class="text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
                     } else {
                         const memoState = expandedMemos[item.id];
-                        const tags = item.tags ? item.tags.split(',').map(t => `<span class="bg-pink-50 text-pink-600 text-[10px] font-bold px-2 py-0.5 rounded-md mr-1 border border-pink-100">#${t.trim()}</span>`).join('') : `<span class="text-gray-300 text-[10px]">#태그 입력</span>`;
+                        // 뷰 모드에서만 해시태그(#)를 붙여서 예쁘게 보여줌
+                        const tags = item.tags ? item.tags.split(',').map(t => `<span class="bg-pink-50 text-pink-600 text-[10px] font-bold px-2 py-0.5 rounded-md mr-1 border border-pink-100">#${t.trim()}</span>`).join('') : `<span class="text-gray-300 text-[10px]">#태그 없음</span>`;
                         const memoBadge = item.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
                         let memoHtml = memoState === 'view' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">메모</span><button onclick="window.toggleMemo(event, '${item.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${item.memo || '메모가 없습니다.'}</p></div>` : (memoState === 'edit' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><textarea id="memo-input-${item.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${item.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${item.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${item.id}', 'muck')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div></div>` : '');
                         catHtml += `<div class="bg-white p-4 rounded-2xl border shadow-sm hover:border-pink-200 cursor-pointer relative" onclick="window.toggleMemo(event, '${item.id}', 'view')">${memoBadge}<div class="flex justify-between items-center"><div class="flex items-start space-x-3"><div class="bg-pink-50 p-2.5 rounded-xl"><i data-lucide="${iconType}" class="w-5 h-5 text-pink-500"></i></div><div><h4 class="font-extrabold text-gray-800">${item.name}</h4><div class="mt-1.5 flex flex-wrap gap-1">${tags}</div></div></div>${item.mapUrl ? `<a href="${item.mapUrl}" target="_blank" onclick="event.stopPropagation()" class="p-2.5 bg-blue-50 text-blue-500 rounded-full"><i data-lucide="map-pin" class="w-4 h-4"></i></a>` : ''}</div>${memoHtml}</div>`;
@@ -266,7 +272,7 @@
                 muckContainer.innerHTML += catHtml + `</div></div>`;
             });
 
-            // 일정표 렌더링
+            // 일정표 및 체크리스트 (기존 로직 유지)
             const tripContainer = document.getElementById('trip-container');
             tripContainer.innerHTML = '';
             tripData.forEach(day => {
@@ -286,7 +292,7 @@
                         } else {
                             const memoState = expandedMemos[act.id];
                             const memoBadge = act.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
-                            let memoHtml = memoState === 'view' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">상세 메모</span><button onclick="window.toggleMemo(event, '${act.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${act.memo || '메모가 없습니다.'}</p></div>` : (memoState === 'edit' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><textarea id="memo-input-${act.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${act.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${act.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${act.id}', 'trip')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div></div>` : '');
+                            let memoHtml = memoState === 'view' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">상세 메모</span><button onclick="window.toggleMemo(event, '${act.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${act.memo || '메모가 없습니다.'}</p></div>` : (memoState === 'edit' ? `<textarea id="memo-input-${act.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${act.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${act.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${act.id}', 'trip')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div>` : '');
                             actHtml += `<div class="relative pl-6"><div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border shadow-sm flex items-center justify-center z-10"><i data-lucide="${act.type}" class="w-4 h-4 ${getIconColor(act.type)}"></i></div><div class="p-4 rounded-2xl bg-white border shadow-sm hover:border-pink-200 cursor-pointer relative" onclick="window.toggleMemo(event, '${act.id}', 'view')">${memoBadge}<div class="flex justify-between items-center"><div class="flex-1"><div class="text-[11px] font-bold text-pink-600 mb-1">${act.time}</div><h4 class="font-bold text-gray-800 text-[15px]">${act.title}</h4>${act.desc ? `<p class="text-xs text-gray-500 mt-1">${act.desc}</p>` : ''}</div><i data-lucide="chevron-right" class="w-4 h-4 text-gray-200 ${memoState ? 'rotate-90' : ''}"></i></div>${memoHtml}</div></div>`;
                         }
                     });
@@ -296,7 +302,6 @@
                 tripContainer.appendChild(card);
             });
 
-            // 체크리스트 렌더링
             const chkContainer = document.getElementById('checklist-container');
             chkContainer.innerHTML = `<div class="flex items-center mb-5"><div class="bg-pink-100 p-2 rounded-xl mr-3"><i data-lucide="list-todo" class="w-5 h-5 text-pink-600"></i></div><h2 class="text-xl font-bold text-gray-800">체크리스트</h2></div>`;
             checklistData.forEach(item => {
