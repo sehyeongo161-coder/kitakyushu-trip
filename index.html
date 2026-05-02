@@ -35,7 +35,7 @@
                     <h1 class="text-3xl font-extrabold text-gray-800 leading-tight">우리의<br />기타큐슈 여행</h1>
                 </div>
                 <div class="flex items-center space-x-2 mt-2">
-                    <button id="undo-btn" class="bg-white/80 p-2 rounded-full shadow-sm text-gray-400 transition-colors backdrop-blur-sm disabled:opacity-30" onclick="window.undoAction()" disabled>
+                    <button id="undo-btn" class="bg-white/80 p-2 rounded-full shadow-sm text-gray-400 hover:text-indigo-500 transition-colors backdrop-blur-sm disabled:opacity-30" onclick="window.undoAction()" disabled>
                         <i data-lucide="undo-2" class="w-5 h-5"></i>
                     </button>
                     <button id="edit-toggle-btn" class="bg-white/80 p-2 rounded-full shadow-sm text-gray-600 hover:text-pink-500 transition-colors backdrop-blur-sm" onclick="window.toggleEditMode()">
@@ -204,7 +204,6 @@
             saveData(); expandedMemos[id] = 'view'; render();
         };
 
-        // 태그 업데이트 로직: '#' 강제 제거 패치
         window.updateMuckkit = function(id, field, value) {
             const item = muckkitData.find(m => String(m.id) === String(id));
             if (item) {
@@ -252,7 +251,7 @@
             document.getElementById('muckkit-view').style.display = currentTab === 'muckkit' ? 'block' : 'none';
             document.getElementById('checklist-view').style.display = currentTab === 'checklist' ? 'block' : 'none';
 
-            // 하단 내비게이션 탭 상태 반영
+            // 하단 내비게이션 불빛 상태 갱신
             const tabs = ['itinerary', 'muckkit', 'checklist'];
             tabs.forEach(tab => {
                 const el = document.getElementById(`nav-${tab}`);
@@ -281,25 +280,25 @@
                         const tagList = cleanedTags ? cleanedTags.split(',').filter(t => t.trim()).map(t => `<span class="bg-pink-50 text-pink-600 text-[10px] font-bold px-2 py-0.5 rounded-md mr-1 border border-pink-100">#${t.trim()}</span>`).join('') : `<span class="text-gray-300 text-[10px]">#태그 없음</span>`;
                         const memoBadge = item.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
                         
-                        // 메모장 영역 HTML: 클릭 이벤트 분리
+                        // 메모 영역 생성 (이벤트 버블링 차단을 위해 onclick 분리)
                         let memoHtml = '';
                         if (memoState === 'view') {
-                            memoHtml = `<div class="mt-3 pt-3 border-t"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">메모</span><button onclick="window.toggleMemo(event, '${item.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${item.memo || '메모가 없습니다.'}</p></div>`;
+                            memoHtml = `<div class="mt-3 pt-3 border-t border-gray-100" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">상세 메모</span><button onclick="window.toggleMemo(event, '${item.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3.5 h-3.5 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border border-slate-100">${item.memo || '메모가 없습니다.'}</p></div>`;
                         } else if (memoState === 'edit') {
-                            memoHtml = `<div class="mt-3 pt-3 border-t"><textarea id="memo-input-${item.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${item.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${item.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${item.id}', 'muck')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div></div>`;
+                            memoHtml = `<div class="mt-3 pt-3 border-t border-gray-100" onclick="event.stopPropagation()"><textarea id="memo-input-${item.id}" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] min-h-[80px]" onclick="event.stopPropagation()">${item.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${item.id}', 'view')" class="px-3 py-1 text-xs bg-gray-100 rounded-lg">취소</button><button onclick="window.saveMemo(event, '${item.id}', 'muck')" class="px-3 py-1 text-xs bg-pink-500 text-white rounded-lg">저장</button></div></div>`;
                         }
 
-                        catHtml += `<div class="bg-white p-4 rounded-2xl border shadow-sm hover:border-pink-200 relative transition-all">
+                        catHtml += `<div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:border-pink-200 relative transition-all">
                             ${memoBadge}
-                            <!-- 접기/펴기 터치 영역 (메모장과 완전 분리) -->
+                            <!-- 클릭하여 열고 닫는 부분 (완전 분리) -->
                             <div class="flex justify-between items-center cursor-pointer" onclick="window.toggleMemo(event, '${item.id}', 'view')">
                                 <div class="flex items-start space-x-3">
                                     <div class="bg-pink-50 p-2.5 rounded-xl"><i data-lucide="${iconType}" class="w-5 h-5 text-pink-500"></i></div>
-                                    <div><h4 class="font-extrabold text-gray-800">${item.name}</h4><div class="mt-1.5 flex flex-wrap gap-1">${tagList}</div></div>
+                                    <div><h4 class="font-extrabold text-gray-800 text-[15px]">${item.name}</h4><div class="mt-1.5 flex flex-wrap gap-1">${tagList}</div></div>
                                 </div>
-                                ${item.mapUrl ? `<a href="${item.mapUrl}" target="_blank" onclick="event.stopPropagation()" class="p-2.5 bg-blue-50 text-blue-500 rounded-full"><i data-lucide="map-pin" class="w-4 h-4"></i></a>` : ''}
+                                ${item.mapUrl ? `<a href="${item.mapUrl}" target="_blank" onclick="event.stopPropagation()" class="p-2.5 bg-blue-50 text-blue-500 rounded-full hover:bg-blue-100 transition-colors shadow-sm ml-2 shrink-0"><i data-lucide="map-pin" class="w-4 h-4"></i></a>` : ''}
                             </div>
-                            <!-- 메모장 영역은 터치 영역 바깥에 위치 -->
+                            <!-- 분리된 메모장 영역이 이 밑에 붙습니다 -->
                             ${memoHtml}
                         </div>`;
                     }
@@ -327,30 +326,30 @@
                             actHtml += `<div class="relative pl-6"><div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border-2 border-pink-200 flex items-center justify-center z-10 cursor-pointer" onclick="window.changeIcon('${day.id}', '${act.id}')"><i data-lucide="${act.type}" class="w-4 h-4 text-pink-600"></i></div><div class="bg-slate-50 p-3 rounded-xl border"><div class="flex gap-2 mb-2"><input type="text" class="edit-input w-16 text-xs text-pink-500 font-bold" value="${act.time}" onchange="window.updateData('${day.id}', '${act.id}', 'time', this.value)"><input type="text" class="edit-input flex-1 text-sm font-bold" value="${act.title}" onchange="window.updateData('${day.id}', '${act.id}', 'title', this.value)"></div><input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${act.desc || ''}" onchange="window.updateData('${day.id}', '${act.id}', 'desc', this.value)" placeholder="설명"><button onclick="window.deleteActivity('${day.id}', '${act.id}')" class="text-red-400 text-[10px]">삭제</button></div></div>`;
                         } else {
                             const memoState = expandedMemos[act.id];
-                            const memoBadge = act.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
+                            const memoBadge = act.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white shadow-sm"></span>` : '';
                             
-                            // 메모장 영역 HTML: 클릭 이벤트 분리
+                            // 메모 영역 생성 (이벤트 버블링 차단을 위해 onclick 분리)
                             let memoHtml = '';
                             if (memoState === 'view') {
-                                memoHtml = `<div class="mt-3 pt-3 border-t"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">상세 메모</span><button onclick="window.toggleMemo(event, '${act.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${act.memo || '메모가 없습니다.'}</p></div>`;
+                                memoHtml = `<div class="mt-3 pt-3 border-t border-gray-100" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">상세 메모</span><button onclick="window.toggleMemo(event, '${act.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3.5 h-3.5 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border border-slate-100">${act.memo || '메모가 없습니다.'}</p></div>`;
                             } else if (memoState === 'edit') {
-                                memoHtml = `<div class="mt-3 pt-3 border-t"><textarea id="memo-input-${act.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${act.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${act.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${act.id}', 'trip')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div></div>`;
+                                memoHtml = `<div class="mt-3 pt-3 border-t border-gray-100" onclick="event.stopPropagation()"><textarea id="memo-input-${act.id}" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] min-h-[80px]" onclick="event.stopPropagation()">${act.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${act.id}', 'view')" class="px-3 py-1 text-xs bg-gray-100 rounded-lg">취소</button><button onclick="window.saveMemo(event, '${act.id}', 'trip')" class="px-3 py-1 text-xs bg-pink-500 text-white rounded-lg">저장</button></div></div>`;
                             }
 
                             catHtml += `<div class="relative pl-6">
                                 <div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border shadow-sm flex items-center justify-center z-10"><i data-lucide="${act.type}" class="w-4 h-4 ${getIconColor(act.type)}"></i></div>
-                                <div class="p-4 rounded-2xl bg-white border shadow-sm hover:border-pink-200 relative transition-all">
+                                <div class="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-pink-200 relative transition-all">
                                     ${memoBadge}
-                                    <!-- 접기/펴기 터치 영역 (메모장과 완전 분리) -->
+                                    <!-- 클릭하여 열고 닫는 부분 (완전 분리) -->
                                     <div class="flex justify-between items-center cursor-pointer" onclick="window.toggleMemo(event, '${act.id}', 'view')">
                                         <div class="flex-1">
                                             <div class="text-[11px] font-bold text-pink-600 mb-1">${act.time}</div>
                                             <h4 class="font-bold text-gray-800 text-[15px]">${act.title}</h4>
                                             ${act.desc ? `<p class="text-xs text-gray-500 mt-1">${act.desc}</p>` : ''}
                                         </div>
-                                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-200 ${memoState ? 'rotate-90' : ''} transition-transform"></i>
+                                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-200 shrink-0 ${memoState ? 'rotate-90' : ''} transition-transform"></i>
                                     </div>
-                                    <!-- 메모장 영역은 터치 영역 바깥에 위치 -->
+                                    <!-- 분리된 메모장 영역이 이 밑에 붙습니다 -->
                                     ${memoHtml}
                                 </div>
                             </div>`;
