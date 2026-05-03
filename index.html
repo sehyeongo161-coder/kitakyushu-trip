@@ -56,7 +56,7 @@
                     </div>
                     <h2 class="text-2xl font-extrabold text-gray-800 tracking-tight">먹킷리스트</h2>
                 </div>
-                <div id="muckkit-container" class="space-y-6 mt-2"></div>
+                <div id="muckkit-container" class="space-y-4 mt-2"></div>
             </div>
             <div id="checklist-view" class="hidden pb-8">
                 <div id="checklist-container" class="bg-white rounded-3xl shadow-sm border border-pink-50/50 p-5 mt-4"></div>
@@ -99,6 +99,7 @@
         let muckkitData = [];
         let checklistData = [];
         let openDays = [1, 2]; 
+        let openCategories = ['식당', '카페', '군것질']; // 먹킷리스트 펼침 상태 관리
         let expandedMemos = {}; 
         let isEditMode = false;
         let currentTab = 'itinerary';
@@ -148,6 +149,13 @@
 
         window.switchTab = function(tab) { currentTab = tab; window.scrollTo(0,0); render(); };
         window.toggleDay = function(id) { if (openDays.includes(id)) openDays = openDays.filter(d => d !== id); else openDays.push(id); render(); };
+        
+        // 먹킷리스트 접기/펼치기 기능 추가
+        window.toggleCategory = function(cat) { 
+            if (openCategories.includes(cat)) openCategories = openCategories.filter(c => c !== cat); 
+            else openCategories.push(cat); 
+            render(); 
+        };
 
         window.changeIcon = function(dayId, activityId) {
             const types = ['plane', 'ship', 'train', 'bus', 'utensils', 'shopping-bag', 'camera', 'heart', 'coffee'];
@@ -183,12 +191,61 @@
             saveData(); expandedMemos[id] = 'view'; render();
         };
 
-        // 먹킷리스트 태그 업데이트 로직 (중요: '#' 강제 제거)
+        window.moveMuckkitItem = function(id, direction) {
+            const item = muckkitData.find(m => String(m.id) === String(id));
+            if (!item) return;
+            const catItems = muckkitData.filter(m => m.category === item.category);
+            const catIndex = catItems.findIndex(m => String(m.id) === String(id));
+            const targetCatIndex = catIndex + direction;
+            
+            if (targetCatIndex >= 0 && targetCatIndex < catItems.length) {
+                window.saveHistory();
+                const targetItem = catItems[targetCatIndex];
+                const actualIndex1 = muckkitData.findIndex(m => String(m.id) === String(item.id));
+                const actualIndex2 = muckkitData.findIndex(m => String(m.id) === String(targetItem.id));
+                
+                // Swap in the main array
+                const temp = muckkitData[actualIndex1];
+                muckkitData[actualIndex1] = muckkitData[actualIndex2];
+                muckkitData[actualIndex2] = temp;
+                render();
+            }
+        };
+
+        window.moveActivity = function(dayId, actId, direction) {
+            const day = tripData.find(d => String(d.id) === String(dayId));
+            if (!day) return;
+            const index = day.activities.findIndex(a => String(a.id) === String(actId));
+            if (index < 0) return;
+            
+            const targetIndex = index + direction;
+            if (targetIndex >= 0 && targetIndex < day.activities.length) {
+                window.saveHistory();
+                const temp = day.activities[index];
+                day.activities[index] = day.activities[targetIndex];
+                day.activities[targetIndex] = temp;
+                render();
+            }
+        };
+
+        window.moveChecklistItem = function(id, direction) {
+            const index = checklistData.findIndex(i => String(i.id) === String(id));
+            if (index < 0) return;
+            
+            const targetIndex = index + direction;
+            if (targetIndex >= 0 && targetIndex < checklistData.length) {
+                window.saveHistory();
+                const temp = checklistData[index];
+                checklistData[index] = checklistData[targetIndex];
+                checklistData[targetIndex] = temp;
+                render();
+            }
+        };
+
         window.updateMuckkit = function(id, field, value) {
             const item = muckkitData.find(m => String(m.id) === String(id));
             if (item) {
                 window.saveHistory();
-                // 태그 필드일 경우 입력된 모든 '#' 문자를 공백으로 치환
                 if (field === 'tags') {
                     item[field] = value.replace(/#/g, '');
                 } else {
@@ -235,7 +292,7 @@
             document.getElementById('muckkit-view').style.display = currentTab === 'muckkit' ? 'block' : 'none';
             document.getElementById('checklist-view').style.display = currentTab === 'checklist' ? 'block' : 'none';
 
-            // 하단 내비게이션 탭 불빛 동기화
+            // 하단 내비게이션 동기화
             const tabs = ['itinerary', 'muckkit', 'checklist'];
             tabs.forEach(tab => {
                 const el = document.getElementById(`nav-${tab}`);
@@ -250,36 +307,53 @@
                 }
             });
 
-            // 먹킷리스트 렌더링
+            // 먹킷리스트 렌더링 (아코디언 방식 적용)
             const muckContainer = document.getElementById('muckkit-container');
             muckContainer.innerHTML = '';
             ["식당", "카페", "군것질"].forEach(cat => {
+                const isOpen = openCategories.includes(cat);
                 const items = muckkitData.filter(m => m.category === cat);
                 let iconType = cat === '카페' ? 'coffee' : (cat === '군것질' ? 'ice-cream' : 'utensils');
-                let catHtml = `<div class="mb-6"><div class="flex items-center space-x-2 bg-white border border-pink-100 px-4 py-1.5 rounded-full w-max mb-3"><i data-lucide="${iconType}" class="w-4 h-4 text-pink-500"></i><h3 class="text-[13px] font-extrabold text-pink-600">${cat}</h3></div><div class="space-y-3">`;
-                items.forEach(item => {
-                    // 데이터 내에 남아있는 '#' 문자 강제 제거 로직 추가
-                    const cleanedTags = item.tags ? item.tags.replace(/#/g, '').replace(/태그 입력/g, '') : "";
+                
+                let catHtml = `<div class="bg-white rounded-3xl shadow-sm border border-pink-50/50 mb-4 overflow-hidden">
+                    <div class="p-5 flex justify-between items-center ${!isEditMode ? 'cursor-pointer' : ''}" onclick="${!isEditMode ? `window.toggleCategory('${cat}')` : ''}">
+                        <div class="flex items-center space-x-2 bg-pink-50 px-3 py-1.5 rounded-full w-max">
+                            <i data-lucide="${iconType}" class="w-4 h-4 text-pink-500"></i>
+                            <h3 class="text-[13px] font-extrabold text-pink-600">${cat}</h3>
+                        </div>
+                        <i data-lucide="${isOpen ? 'chevron-up' : 'chevron-down'}" class="text-gray-400"></i>
+                    </div>`;
 
-                    if (isEditMode) {
-                        catHtml += `<div class="bg-white p-4 rounded-2xl border-2 border-pink-100 shadow-sm"><div class="flex gap-2 mb-3"><i data-lucide="${iconType}" class="w-4 h-4 text-pink-400 mt-1"></i><input type="text" class="edit-input flex-1 font-bold text-sm bg-pink-50/30" value="${item.name}" onchange="window.updateMuckkit('${item.id}', 'name', this.value)"></div>
-                        <!-- 태그 입력창: 안내 문구를 placeholder로 처리 -->
-                        <input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${cleanedTags}" placeholder="태그 입력 (예: 고쿠라, 라멘, 가성비)" onchange="window.updateMuckkit('${item.id}', 'tags', this.value)">
-                        <div class="flex justify-between items-center"><div class="flex-1 mr-2 flex bg-gray-50 rounded p-1 border"><i data-lucide="map-pin" class="w-3 h-3 text-gray-400 mx-1"></i><input type="text" class="edit-input flex-1 text-[10px] text-blue-500 border-none bg-transparent p-0" value="${item.mapUrl || ''}" placeholder="구글맵 URL" onchange="window.updateMuckkit('${item.id}', 'mapUrl', this.value)"></div><button onclick="window.deleteMuckkit('${item.id}')" class="text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
-                    } else {
-                        const memoState = expandedMemos[item.id];
-                        // 조회 모드에서만 해시태그(#)를 붙여서 표시
-                        const tagList = cleanedTags ? cleanedTags.split(',').filter(t => t.trim()).map(t => `<span class="bg-pink-50 text-pink-600 text-[10px] font-bold px-2 py-0.5 rounded-md mr-1 border border-pink-100">#${t.trim()}</span>`).join('') : `<span class="text-gray-300 text-[10px]">#태그 없음</span>`;
-                        const memoBadge = item.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
-                        let memoHtml = memoState === 'view' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">메모</span><button onclick="window.toggleMemo(event, '${item.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${item.memo || '메모가 없습니다.'}</p></div>` : (memoState === 'edit' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><textarea id="memo-input-${item.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${item.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${item.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${item.id}', 'muck')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div></div>` : '');
-                        catHtml += `<div class="bg-white p-4 rounded-2xl border shadow-sm hover:border-pink-200 cursor-pointer relative" onclick="window.toggleMemo(event, '${item.id}', 'view')">${memoBadge}<div class="flex justify-between items-center"><div class="flex items-start space-x-3"><div class="bg-pink-50 p-2.5 rounded-xl"><i data-lucide="${iconType}" class="w-5 h-5 text-pink-500"></i></div><div><h4 class="font-extrabold text-gray-800">${item.name}</h4><div class="mt-1.5 flex flex-wrap gap-1">${tagList}</div></div></div>${item.mapUrl ? `<a href="${item.mapUrl}" target="_blank" onclick="event.stopPropagation()" class="p-2.5 bg-blue-50 text-blue-500 rounded-full"><i data-lucide="map-pin" class="w-4 h-4"></i></a>` : ''}</div>${memoHtml}</div>`;
-                    }
-                });
-                if (isEditMode) catHtml += `<button onclick="window.addMuckkit('${cat}')" class="w-full py-3 border-2 border-dashed border-pink-200 rounded-xl text-pink-500 text-xs font-bold mt-2 hover:bg-pink-50">+ ${cat} 추가</button>`;
-                muckContainer.innerHTML += catHtml + `</div></div>`;
+                if (isOpen) {
+                    catHtml += `<div class="px-5 pb-6 pt-2 border-t border-pink-50/30 space-y-3">`;
+                    items.forEach((item, idx) => {
+                        const cleanedTags = item.tags ? item.tags.replace(/#/g, '').replace(/태그 입력/g, '') : "";
+
+                        if (isEditMode) {
+                            catHtml += `<div class="bg-white p-4 rounded-2xl border-2 border-pink-100 shadow-sm"><div class="flex gap-2 mb-3"><i data-lucide="${iconType}" class="w-4 h-4 text-pink-400 mt-1"></i><input type="text" class="edit-input flex-1 font-bold text-sm bg-pink-50/30" value="${item.name}" onchange="window.updateMuckkit('${item.id}', 'name', this.value)"></div>
+                            <input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${cleanedTags}" placeholder="태그 입력 (예: 고쿠라, 라멘, 가성비)" onchange="window.updateMuckkit('${item.id}', 'tags', this.value)">
+                            <div class="flex justify-between items-center"><div class="flex-1 mr-2 flex bg-gray-50 rounded p-1 border"><i data-lucide="map-pin" class="w-3 h-3 text-gray-400 mx-1"></i><input type="text" class="edit-input flex-1 text-[10px] text-blue-500 border-none bg-transparent p-0" value="${item.mapUrl || ''}" placeholder="구글맵 URL" onchange="window.updateMuckkit('${item.id}', 'mapUrl', this.value)"></div>
+                            <div class="flex space-x-1 mr-2">
+                                <button onclick="window.moveMuckkitItem('${item.id}', -1)" class="p-1 bg-white rounded shadow-sm text-gray-400 hover:text-pink-500 disabled:opacity-30 disabled:shadow-none" ${idx === 0 ? 'disabled' : ''}><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+                                <button onclick="window.moveMuckkitItem('${item.id}', 1)" class="p-1 bg-white rounded shadow-sm text-gray-400 hover:text-pink-500 disabled:opacity-30 disabled:shadow-none" ${idx === items.length - 1 ? 'disabled' : ''}><i data-lucide="arrow-down" class="w-4 h-4"></i></button>
+                            </div>
+                            <button onclick="window.deleteMuckkit('${item.id}')" class="text-red-400 p-1.5 bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+                        } else {
+                            const memoState = expandedMemos[item.id];
+                            const tagList = cleanedTags ? cleanedTags.split(',').filter(t => t.trim()).map(t => `<span class="bg-pink-50 text-pink-600 text-[10px] font-bold px-2 py-0.5 rounded-md mr-1 border border-pink-100">#${t.trim()}</span>`).join('') : `<span class="text-gray-300 text-[10px]">#태그 없음</span>`;
+                            const memoBadge = item.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
+                            let memoHtml = memoState === 'view' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-400">메모</span><button onclick="window.toggleMemo(event, '${item.id}', 'edit')" class="p-1 hover:bg-pink-50 rounded"><i data-lucide="pencil" class="w-3 h-3 text-gray-400"></i></button></div><p class="text-[13px] text-gray-700 whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border">${item.memo || '메모가 없습니다.'}</p></div>` : (memoState === 'edit' ? `<div class="mt-3 pt-3 border-t" onclick="event.stopPropagation()"><textarea id="memo-input-${item.id}" class="w-full bg-slate-50 border rounded-xl p-3 text-[13px] min-h-[80px]">${item.memo || ''}</textarea><div class="flex justify-end space-x-2 mt-2"><button onclick="window.toggleMemo(event, '${item.id}', 'view')" class="px-2 py-1 text-xs bg-gray-100 rounded">취소</button><button onclick="window.saveMemo(event, '${item.id}', 'muck')" class="px-2 py-1 text-xs bg-pink-500 text-white rounded">저장</button></div></div>` : '');
+                            catHtml += `<div class="bg-white p-4 rounded-2xl border shadow-sm hover:border-pink-200 cursor-pointer relative" onclick="window.toggleMemo(event, '${item.id}', 'view')">${memoBadge}<div class="flex justify-between items-center"><div class="flex items-start space-x-3"><div class="bg-pink-50 p-2.5 rounded-xl"><i data-lucide="${iconType}" class="w-5 h-5 text-pink-500"></i></div><div><h4 class="font-extrabold text-gray-800">${item.name}</h4><div class="mt-1.5 flex flex-wrap gap-1">${tagList}</div></div></div>${item.mapUrl ? `<a href="${item.mapUrl}" target="_blank" onclick="event.stopPropagation()" class="p-2.5 bg-blue-50 text-blue-500 rounded-full"><i data-lucide="map-pin" class="w-4 h-4"></i></a>` : ''}</div>${memoHtml}</div>`;
+                        }
+                    });
+                    if (isEditMode) catHtml += `<button onclick="window.addMuckkit('${cat}')" class="w-full py-3 border-2 border-dashed border-pink-200 rounded-xl text-pink-500 text-xs font-bold mt-2 hover:bg-pink-50">+ ${cat} 추가</button>`;
+                    catHtml += `</div>`;
+                }
+                catHtml += `</div>`;
+                muckContainer.innerHTML += catHtml;
             });
 
-            // 일정표 및 체크리스트 렌더링 (기존 로직 유지)
+            // 일정표 렌더링
             const tripContainer = document.getElementById('trip-container');
             tripContainer.innerHTML = '';
             tripData.forEach(day => {
@@ -293,9 +367,16 @@
                 </div>`;
                 if (isOpen) {
                     let actHtml = `<div class="px-5 pb-6 pt-2 border-t border-pink-50/30"><div class="relative border-l-[1.5px] border-pink-100 ml-4 space-y-6 mt-4">`;
-                    day.activities.forEach(act => {
+                    day.activities.forEach((act, actIdx) => {
                         if (isEditMode) {
-                            actHtml += `<div class="relative pl-6"><div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border-2 border-pink-200 flex items-center justify-center z-10 cursor-pointer" onclick="window.changeIcon('${day.id}', '${act.id}')"><i data-lucide="${act.type}" class="w-4 h-4 text-pink-600"></i></div><div class="bg-slate-50 p-3 rounded-xl border"><div class="flex gap-2 mb-2"><input type="text" class="edit-input w-16 text-xs text-pink-500 font-bold" value="${act.time}" onchange="window.updateData('${day.id}', '${act.id}', 'time', this.value)"><input type="text" class="edit-input flex-1 text-sm font-bold" value="${act.title}" onchange="window.updateData('${day.id}', '${act.id}', 'title', this.value)"></div><input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${act.desc || ''}" onchange="window.updateData('${day.id}', '${act.id}', 'desc', this.value)" placeholder="설명"><button onclick="window.deleteActivity('${day.id}', '${act.id}')" class="text-red-400 text-[10px]">삭제</button></div></div>`;
+                            actHtml += `<div class="relative pl-6"><div class="absolute -left-[17px] top-0 w-[34px] h-[34px] rounded-full bg-white border-2 border-pink-200 flex items-center justify-center z-10 cursor-pointer" onclick="window.changeIcon('${day.id}', '${act.id}')"><i data-lucide="${act.type}" class="w-4 h-4 text-pink-600"></i></div><div class="bg-slate-50 p-3 rounded-xl border"><div class="flex gap-2 mb-2"><input type="text" class="edit-input w-16 text-xs text-pink-500 font-bold" value="${act.time}" onchange="window.updateData('${day.id}', '${act.id}', 'time', this.value)"><input type="text" class="edit-input flex-1 text-sm font-bold" value="${act.title}" onchange="window.updateData('${day.id}', '${act.id}', 'title', this.value)"></div><input type="text" class="edit-input w-full text-xs text-gray-500 mb-2" value="${act.desc || ''}" onchange="window.updateData('${day.id}', '${act.id}', 'desc', this.value)" placeholder="설명">
+                            <div class="flex justify-between items-center mt-2 border-t pt-2 border-gray-200/50">
+                                <div class="flex space-x-2">
+                                    <button onclick="window.moveActivity('${day.id}', '${act.id}', -1)" class="p-1 bg-white border rounded shadow-sm text-gray-400 hover:text-pink-500 disabled:opacity-30 disabled:shadow-none" ${actIdx === 0 ? 'disabled' : ''}><i data-lucide="arrow-up" class="w-3 h-3"></i></button>
+                                    <button onclick="window.moveActivity('${day.id}', '${act.id}', 1)" class="p-1 bg-white border rounded shadow-sm text-gray-400 hover:text-pink-500 disabled:opacity-30 disabled:shadow-none" ${actIdx === day.activities.length - 1 ? 'disabled' : ''}><i data-lucide="arrow-down" class="w-3 h-3"></i></button>
+                                </div>
+                                <button onclick="window.deleteActivity('${day.id}', '${act.id}')" class="text-red-400 text-[11px] font-bold px-2 py-1 bg-red-50 rounded">삭제</button>
+                            </div></div></div>`;
                         } else {
                             const memoState = expandedMemos[act.id];
                             const memoBadge = act.memo ? `<span class="absolute top-3 right-3 w-2 h-2 bg-pink-500 rounded-full ring-2 ring-white"></span>` : '';
@@ -309,10 +390,16 @@
                 tripContainer.appendChild(card);
             });
 
+            // 체크리스트 렌더링
             const chkContainer = document.getElementById('checklist-container');
             chkContainer.innerHTML = `<div class="flex items-center mb-5"><div class="bg-pink-100 p-2 rounded-xl mr-3"><i data-lucide="list-todo" class="w-5 h-5 text-pink-600"></i></div><h2 class="text-xl font-bold text-gray-800">체크리스트</h2></div>`;
-            checklistData.forEach(item => {
-                if (isEditMode) chkContainer.innerHTML += `<div class="flex items-center bg-slate-50 p-2.5 rounded-xl border mb-2"><input type="text" class="edit-input flex-1 mr-3 text-sm" value="${item.text}" onchange="window.updateChecklistData('${item.id}', this.value)" placeholder="항목 입력"><button onclick="window.deleteChecklistItem('${item.id}')" class="text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
+            checklistData.forEach((item, idx) => {
+                if (isEditMode) chkContainer.innerHTML += `<div class="flex items-center bg-slate-50 p-2.5 rounded-xl border mb-2"><input type="text" class="edit-input flex-1 mr-3 text-sm" value="${item.text}" onchange="window.updateChecklistData('${item.id}', this.value)" placeholder="항목 입력">
+                    <div class="flex space-x-1 mr-2">
+                        <button onclick="window.moveChecklistItem('${item.id}', -1)" class="p-1 bg-white border rounded shadow-sm text-gray-400 hover:text-pink-500 disabled:opacity-30 disabled:shadow-none" ${idx === 0 ? 'disabled' : ''}><i data-lucide="arrow-up" class="w-3 h-3"></i></button>
+                        <button onclick="window.moveChecklistItem('${item.id}', 1)" class="p-1 bg-white border rounded shadow-sm text-gray-400 hover:text-pink-500 disabled:opacity-30 disabled:shadow-none" ${idx === checklistData.length - 1 ? 'disabled' : ''}><i data-lucide="arrow-down" class="w-3 h-3"></i></button>
+                    </div>
+                    <button onclick="window.deleteChecklistItem('${item.id}')" class="text-red-400 p-1.5 bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
                 else chkContainer.innerHTML += `<div class="flex items-center p-3 rounded-xl ${item.checked ? 'bg-slate-50' : 'bg-white shadow-sm border'} mb-2 cursor-pointer" onclick="window.toggleChecklistItem('${item.id}')"><i data-lucide="${item.checked ? 'check-square' : 'square'}" class="w-5 h-5 mr-3 ${item.checked ? 'text-pink-400' : 'text-gray-300'}"></i><span class="${item.checked ? 'text-gray-400 line-through' : 'text-gray-800 font-medium'}">${item.text}</span></div>`;
             });
             if (isEditMode) chkContainer.innerHTML += `<button onclick="window.addChecklistItem()" class="w-full mt-3 py-2 border-2 border-dashed border-pink-200 text-pink-500 font-bold rounded-xl">+ 항목 추가</button>`;
