@@ -2,8 +2,18 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 아이폰 노치/다이내믹 아일랜드 영역까지 꽉 차게 화면을 넓히는 속성(viewport-fit=cover) 추가 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>우리의 기타큐슈 여행</title>
+
+    <!-- 📱 아이폰용 앱 구동을 위한 메타 태그 -->
+    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- 사파리 주소창 숨기고 전체화면으로 실행 -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="기타큐슈"> <!-- 폰 바탕화면에 표시될 짧은 이름 -->
+    
+    <!-- 바탕화면 아이콘 (벚꽃 아이콘 적용) -->
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2010/2010214.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
