@@ -2,17 +2,11 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <!-- 아이폰 노치/다이내믹 아일랜드 영역까지 꽉 차게 화면을 넓히는 속성(viewport-fit=cover) 추가 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>우리의 기타큐슈 여행</title>
 
-    <!-- 📱 아이폰용 앱 구동을 위한 메타 태그 -->
-    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- 사파리 주소창 숨기고 전체화면으로 실행 -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="기타큐슈"> <!-- 폰 바탕화면에 표시될 짧은 이름 -->
-    
-    <!-- 바탕화면 아이콘 (스시 아이콘 적용) -->
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes"> <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="기타큐슈"> <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -59,6 +53,7 @@
             <div id="itinerary-view">
                 <div id="trip-container"></div>
             </div>
+            
             <div id="muckkit-view" class="hidden pb-8">
                 <div class="flex items-center mb-6 px-1 mt-4">
                     <div class="bg-pink-100 p-2 rounded-xl mr-3 shadow-sm border border-pink-200/50">
@@ -68,23 +63,53 @@
                 </div>
                 <div id="muckkit-container" class="space-y-4 mt-2"></div>
             </div>
+            
             <div id="checklist-view" class="hidden pb-8">
                 <div id="checklist-container" class="bg-white rounded-3xl shadow-sm border border-pink-50/50 p-5 mt-4"></div>
+            </div>
+
+            <div id="ledger-view" class="hidden pb-8">
+                <div class="flex items-center mb-6 px-1 mt-4">
+                    <div class="bg-pink-100 p-2 rounded-xl mr-3 shadow-sm border border-pink-200/50">
+                        <i data-lucide="wallet" class="w-6 h-6 text-pink-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-extrabold text-gray-800 tracking-tight">가계부</h2>
+                </div>
+                
+                <div class="bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl p-6 mb-5 text-white shadow-md relative overflow-hidden">
+                    <div class="absolute right-[-20px] bottom-[-20px] opacity-20">
+                        <i data-lucide="coins" class="w-32 h-32"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="text-sm font-semibold opacity-90 mb-1">여행 총 지출</div>
+                        <div class="flex items-end">
+                            <span class="text-4xl font-extrabold tracking-tighter" id="ledger-total">0</span>
+                            <span class="text-xl font-bold ml-1 mb-1 mr-2">¥</span>
+                            <span class="text-base font-medium opacity-80 mb-1.5" id="ledger-total-krw">(0원)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="ledger-container"></div>
             </div>
         </main>
 
         <div class="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-100 p-4 flex justify-around items-center text-gray-400 pb-6 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
-            <button id="nav-itinerary" class="flex flex-col items-center" onclick="window.switchTab('itinerary')">
+            <button id="nav-itinerary" class="flex flex-col items-center flex-1" onclick="window.switchTab('itinerary')">
                 <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i>
                 <span class="text-[10px] font-bold">일정표</span>
             </button>
-            <button id="nav-muckkit" class="flex flex-col items-center" onclick="window.switchTab('muckkit')">
+            <button id="nav-muckkit" class="flex flex-col items-center flex-1" onclick="window.switchTab('muckkit')">
                 <i data-lucide="utensils" class="w-6 h-6 mb-1"></i>
                 <span class="text-[10px] font-bold">먹킷리스트</span>
             </button>
-            <button id="nav-checklist" class="flex flex-col items-center" onclick="window.switchTab('checklist')">
+            <button id="nav-checklist" class="flex flex-col items-center flex-1" onclick="window.switchTab('checklist')">
                 <i data-lucide="list-todo" class="w-6 h-6 mb-1"></i>
                 <span class="text-[10px] font-bold">체크리스트</span>
+            </button>
+            <button id="nav-ledger" class="flex flex-col items-center flex-1" onclick="window.switchTab('ledger')">
+                <i data-lucide="wallet" class="w-6 h-6 mb-1"></i>
+                <span class="text-[10px] font-bold">가계부</span>
             </button>
         </div>
     </div>
@@ -105,11 +130,32 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // 기본 환율
+        let JPY_TO_KRW_RATE = 9.56;
+
+        // 환율 API 연동
+        async function fetchExchangeRate() {
+            try {
+                const response = await fetch('https://api.exchangerate-api.com/v4/latest/JPY');
+                const data = await response.json();
+                if (data && data.rates && data.rates.KRW) {
+                    JPY_TO_KRW_RATE = data.rates.KRW;
+                    render();
+                }
+            } catch (error) {
+                console.error('환율 API 로딩 실패, 기본 환율 적용:', error);
+            }
+        }
+        
+        fetchExchangeRate();
+
         let tripData = [];
         let muckkitData = [];
         let checklistData = [];
+        let ledgerData = [];
+        
         let openDays = [1, 2]; 
-        let openCategories = ['식당', '카페', '군것질']; // 먹킷리스트 펼침 상태 관리
+        let openCategories = ['식당', '카페', '군것질']; 
         let expandedMemos = {}; 
         let isEditMode = false;
         let currentTab = 'itinerary';
@@ -125,12 +171,18 @@
             await setDoc(docRef, { 
                 tripData: JSON.stringify(tripData), 
                 muckkitData: JSON.stringify(muckkitData),
-                checklistData: JSON.stringify(checklistData) 
+                checklistData: JSON.stringify(checklistData),
+                ledgerData: JSON.stringify(ledgerData) 
             });
         }
 
         window.saveHistory = function() {
-            historyStack.push({ tripData: JSON.parse(JSON.stringify(tripData)), muckkitData: JSON.parse(JSON.stringify(muckkitData)), checklistData: JSON.parse(JSON.stringify(checklistData)) });
+            historyStack.push({ 
+                tripData: JSON.parse(JSON.stringify(tripData)), 
+                muckkitData: JSON.parse(JSON.stringify(muckkitData)), 
+                checklistData: JSON.parse(JSON.stringify(checklistData)),
+                ledgerData: JSON.parse(JSON.stringify(ledgerData))
+            });
             if(historyStack.length > 20) historyStack.shift();
             updateUndoButtonState();
         }
@@ -138,7 +190,10 @@
         window.undoAction = function() {
             if (historyStack.length === 0) return;
             const prevState = historyStack.pop();
-            tripData = prevState.tripData; muckkitData = prevState.muckkitData; checklistData = prevState.checklistData;
+            tripData = prevState.tripData; 
+            muckkitData = prevState.muckkitData; 
+            checklistData = prevState.checklistData;
+            ledgerData = prevState.ledgerData || []; 
             saveData(); render();
         };
 
@@ -159,8 +214,6 @@
 
         window.switchTab = function(tab) { currentTab = tab; window.scrollTo(0,0); render(); };
         window.toggleDay = function(id) { if (openDays.includes(id)) openDays = openDays.filter(d => d !== id); else openDays.push(id); render(); };
-        
-        // 먹킷리스트 접기/펼치기 기능 추가
         window.toggleCategory = function(cat) { 
             if (openCategories.includes(cat)) openCategories = openCategories.filter(c => c !== cat); 
             else openCategories.push(cat); 
@@ -168,7 +221,7 @@
         };
 
         window.changeIcon = function(dayId, activityId) {
-            const types = ['plane', 'ship', 'train', 'bus', 'utensils', 'shopping-bag', 'camera', 'heart', 'coffee'];
+            const types = ['plane', 'ship', 'train', 'bus', 'utensils', 'shopping-bag', 'camera', 'heart', 'coffee', 'ice-cream'];
             const day = tripData.find(d => String(d.id) === String(dayId));
             const act = day.activities.find(a => String(a.id) === String(activityId));
             if (act) { window.saveHistory(); const cur = types.indexOf(act.type); act.type = types[(cur + 1) % types.length]; render(); }
@@ -214,7 +267,6 @@
                 const actualIndex1 = muckkitData.findIndex(m => String(m.id) === String(item.id));
                 const actualIndex2 = muckkitData.findIndex(m => String(m.id) === String(targetItem.id));
                 
-                // Swap in the main array
                 const temp = muckkitData[actualIndex1];
                 muckkitData[actualIndex1] = muckkitData[actualIndex2];
                 muckkitData[actualIndex2] = temp;
@@ -297,13 +349,45 @@
         window.deleteChecklistItem = function(id) { window.saveHistory(); checklistData = checklistData.filter(i => String(i.id) !== String(id)); render(); };
         window.addChecklistItem = function() { window.saveHistory(); checklistData.push({ id: 'c' + Date.now(), text: "", checked: false }); render(); };
 
+        window.addLedgerItem = function(dayId) {
+            window.saveHistory();
+            ledgerData.push({ id: 'l' + Date.now(), dayId: dayId, title: "지출 내역", amount: 0, type: "shopping-bag" });
+            render();
+        };
+        
+        window.updateLedgerData = function(id, field, value) {
+            window.saveHistory();
+            const item = ledgerData.find(i => String(i.id) === String(id));
+            if (item) {
+                item[field] = field === 'amount' ? (Number(value) || 0) : value;
+            }
+        };
+
+        window.deleteLedgerItem = function(id) {
+            window.saveHistory();
+            ledgerData = ledgerData.filter(i => String(i.id) !== String(id));
+            render();
+        };
+
+        window.changeLedgerIcon = function(id) {
+            const types = ['plane', 'ship', 'train', 'bus', 'utensils', 'shopping-bag', 'camera', 'heart', 'coffee', 'ice-cream'];
+            const item = ledgerData.find(i => String(i.id) === String(id));
+            if (item) {
+                window.saveHistory(); 
+                const currentType = item.type || 'shopping-bag';
+                const curIndex = types.indexOf(currentType);
+                item.type = types[(curIndex + 1) % types.length]; 
+                render(); 
+            }
+        };
+
         function render() {
             document.getElementById('itinerary-view').style.display = currentTab === 'itinerary' ? 'block' : 'none';
             document.getElementById('muckkit-view').style.display = currentTab === 'muckkit' ? 'block' : 'none';
             document.getElementById('checklist-view').style.display = currentTab === 'checklist' ? 'block' : 'none';
+            document.getElementById('ledger-view').style.display = currentTab === 'ledger' ? 'block' : 'none';
 
-            // 하단 내비게이션 동기화
-            const tabs = ['itinerary', 'muckkit', 'checklist'];
+            const tabs = ['itinerary', 'muckkit', 'checklist', 'ledger'];
             tabs.forEach(tab => {
                 const el = document.getElementById(`nav-${tab}`);
                 if (el) {
@@ -317,7 +401,76 @@
                 }
             });
 
-            // 먹킷리스트 렌더링 (아코디언 방식 적용)
+            // 가계부 렌더링
+            const ldgrContainer = document.getElementById('ledger-container');
+            ldgrContainer.innerHTML = '';
+            
+            const totalAmount = ledgerData.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+            const totalAmountKRW = Math.floor(totalAmount * JPY_TO_KRW_RATE);
+            document.getElementById('ledger-total').innerText = totalAmount.toLocaleString();
+            document.getElementById('ledger-total-krw').innerText = `(${totalAmountKRW.toLocaleString()}원)`;
+
+            // 일정표의 Day 정보를 기반으로 가계부 그룹 생성
+            const ledgerDays = [{ id: 'all', name: '공통/사전 지출' }];
+            tripData.forEach(d => ledgerDays.push({ id: String(d.id), name: `${d.day} 지출` }));
+
+            if (ledgerData.length === 0 && !isEditMode) {
+                ldgrContainer.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm"><i data-lucide="receipt" class="w-10 h-10 mx-auto mb-2 text-gray-300"></i>지출 내역이 없습니다.<br>수정 버튼을 눌러 추가해보세요!</div>`;
+            } else {
+                ledgerDays.forEach(group => {
+                    const items = ledgerData.filter(item => {
+                        const itemDayId = item.dayId || 'all'; 
+                        return String(itemDayId) === String(group.id);
+                    });
+
+                    if (items.length > 0 || isEditMode) {
+                        let groupHtml = `<div class="mb-5"><h3 class="text-[13px] font-extrabold text-gray-500 mb-2 ml-1"><i data-lucide="calendar" class="w-3 h-3 inline-block mr-1 mb-0.5"></i>${group.name}</h3><div class="space-y-2">`;
+                        
+                        items.forEach((item) => {
+                            const itemType = item.type || 'shopping-bag';
+                            const krwAmount = Math.floor((Number(item.amount) || 0) * JPY_TO_KRW_RATE).toLocaleString();
+
+                            if (isEditMode) {
+                                groupHtml += `
+                                <div class="flex items-center bg-white p-3 rounded-2xl border-2 border-pink-100 shadow-sm">
+                                    <div class="w-8 h-8 rounded-full bg-white border-2 border-pink-200 flex items-center justify-center mr-2 cursor-pointer shrink-0" onclick="window.changeLedgerIcon('${item.id}')">
+                                        <i data-lucide="${itemType}" class="w-4 h-4 ${getIconColor(itemType)}"></i>
+                                    </div>
+                                    <input type="text" class="edit-input flex-1 mr-2 text-sm font-bold bg-pink-50/30 min-w-0" value="${item.title}" onchange="window.updateLedgerData('${item.id}', 'title', this.value)" placeholder="지출 내용">
+                                    <div class="flex items-center w-24 shrink-0">
+                                        <input type="number" class="edit-input text-right text-sm font-bold text-rose-500 bg-pink-50/30" value="${item.amount}" onchange="window.updateLedgerData('${item.id}', 'amount', this.value)" placeholder="금액">
+                                        <span class="text-xs font-bold text-gray-400 ml-1">¥</span>
+                                    </div>
+                                    <button onclick="window.deleteLedgerItem('${item.id}')" class="text-red-400 p-1.5 bg-red-50 rounded-lg ml-2 shrink-0"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>`;
+                            } else {
+                                groupHtml += `
+                                <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-pink-50/50 shadow-sm">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 bg-pink-50 rounded-full flex items-center justify-center mr-3">
+                                            <i data-lucide="${itemType}" class="w-4 h-4 ${getIconColor(itemType)}"></i>
+                                        </div>
+                                        <span class="font-semibold text-gray-800">${item.title}</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-extrabold text-rose-500">${Number(item.amount).toLocaleString()}<span class="text-xs text-rose-300 ml-1">¥</span></div>
+                                        <div class="text-[11px] text-gray-400 font-medium">${krwAmount}원</div>
+                                    </div>
+                                </div>`;
+                            }
+                        });
+
+                        if (isEditMode) {
+                            groupHtml += `<button onclick="window.addLedgerItem('${group.id}')" class="w-full mt-2 py-2.5 border-2 border-dashed border-pink-200 text-pink-500 text-xs font-bold rounded-2xl hover:bg-pink-50 transition-colors">+ ${group.name} 내역 추가</button>`;
+                        }
+
+                        groupHtml += `</div></div>`;
+                        ldgrContainer.innerHTML += groupHtml;
+                    }
+                });
+            }
+
+            // 먹킷리스트 렌더링
             const muckContainer = document.getElementById('muckkit-container');
             muckContainer.innerHTML = '';
             ["식당", "카페", "군것질"].forEach(cat => {
@@ -427,6 +580,7 @@
                 tripData = JSON.parse(data.tripData || "[]");
                 muckkitData = JSON.parse(data.muckkitData || "[]");
                 checklistData = JSON.parse(data.checklistData || "[]");
+                ledgerData = JSON.parse(data.ledgerData || "[]"); 
                 render();
             }
             document.getElementById('loading-screen').style.display = 'none';
