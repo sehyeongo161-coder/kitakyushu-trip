@@ -351,7 +351,7 @@
 
         window.addLedgerItem = function(dayId) {
             window.saveHistory();
-            ledgerData.push({ id: 'l' + Date.now(), dayId: dayId, title: "지출 내역", amount: 0, type: "shopping-bag" });
+            ledgerData.push({ id: 'l' + Date.now(), dayId: dayId, title: "지출 내역", amount: 0, type: "shopping-bag", currency: 'JPY' });
             render();
         };
         
@@ -381,6 +381,15 @@
             }
         };
 
+        window.toggleCurrency = function(id) {
+            window.saveHistory();
+            const item = ledgerData.find(i => String(i.id) === String(id));
+            if (item) {
+                item.currency = item.currency === 'KRW' ? 'JPY' : 'KRW';
+                render();
+            }
+        };
+
         function render() {
             document.getElementById('itinerary-view').style.display = currentTab === 'itinerary' ? 'block' : 'none';
             document.getElementById('muckkit-view').style.display = currentTab === 'muckkit' ? 'block' : 'none';
@@ -401,16 +410,27 @@
                 }
             });
 
-            // 가계부 렌더링
             const ldgrContainer = document.getElementById('ledger-container');
             ldgrContainer.innerHTML = '';
             
-            const totalAmount = ledgerData.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-            const totalAmountKRW = Math.floor(totalAmount * JPY_TO_KRW_RATE);
-            document.getElementById('ledger-total').innerText = totalAmount.toLocaleString();
-            document.getElementById('ledger-total-krw').innerText = `(${totalAmountKRW.toLocaleString()}원)`;
+            let totalJPY = 0;
+            let totalKRW = 0;
+            
+            ledgerData.forEach(item => {
+                const amt = Number(item.amount) || 0;
+                const isKrw = item.currency === 'KRW';
+                if (isKrw) {
+                    totalKRW += amt;
+                    totalJPY += amt / JPY_TO_KRW_RATE;
+                } else {
+                    totalJPY += amt;
+                    totalKRW += amt * JPY_TO_KRW_RATE;
+                }
+            });
 
-            // 일정표의 Day 정보를 기반으로 가계부 그룹 생성
+            document.getElementById('ledger-total').innerText = Math.floor(totalJPY).toLocaleString();
+            document.getElementById('ledger-total-krw').innerText = `(${Math.floor(totalKRW).toLocaleString()}원)`;
+
             const ledgerDays = [{ id: 'all', name: '공통/사전 지출' }];
             tripData.forEach(d => ledgerDays.push({ id: String(d.id), name: `${d.day} 지출` }));
 
@@ -428,7 +448,14 @@
                         
                         items.forEach((item) => {
                             const itemType = item.type || 'shopping-bag';
-                            const krwAmount = Math.floor((Number(item.amount) || 0) * JPY_TO_KRW_RATE).toLocaleString();
+                            const isKrw = item.currency === 'KRW';
+                            
+                            let convertedAmount;
+                            if (isKrw) {
+                                convertedAmount = Math.floor((Number(item.amount) || 0) / JPY_TO_KRW_RATE).toLocaleString();
+                            } else {
+                                convertedAmount = Math.floor((Number(item.amount) || 0) * JPY_TO_KRW_RATE).toLocaleString();
+                            }
 
                             if (isEditMode) {
                                 groupHtml += `
@@ -437,9 +464,9 @@
                                         <i data-lucide="${itemType}" class="w-4 h-4 ${getIconColor(itemType)}"></i>
                                     </div>
                                     <input type="text" class="edit-input flex-1 mr-2 text-sm font-bold bg-pink-50/30 min-w-0" value="${item.title}" onchange="window.updateLedgerData('${item.id}', 'title', this.value)" placeholder="지출 내용">
-                                    <div class="flex items-center w-24 shrink-0">
-                                        <input type="number" class="edit-input text-right text-sm font-bold text-rose-500 bg-pink-50/30" value="${item.amount}" onchange="window.updateLedgerData('${item.id}', 'amount', this.value)" placeholder="금액">
-                                        <span class="text-xs font-bold text-gray-400 ml-1">¥</span>
+                                    <div class="flex items-center w-[110px] shrink-0 justify-end">
+                                        <input type="number" class="edit-input text-right text-sm font-bold ${isKrw ? 'text-blue-500' : 'text-rose-500'} bg-pink-50/30 w-16 px-1" value="${item.amount}" onfocus="if(this.value=='0') this.value=''" onblur="if(this.value=='') this.value='0'" onchange="window.updateLedgerData('${item.id}', 'amount', this.value)" placeholder="금액">
+                                        <button onclick="window.toggleCurrency('${item.id}')" class="text-[11px] font-extrabold ${isKrw ? 'bg-blue-50 text-blue-500 border-blue-200' : 'bg-rose-50 text-rose-500 border-rose-200'} border rounded px-1.5 py-1 ml-1 transition-colors shrink-0">${isKrw ? '₩' : '¥'}</button>
                                     </div>
                                     <button onclick="window.deleteLedgerItem('${item.id}')" class="text-red-400 p-1.5 bg-red-50 rounded-lg ml-2 shrink-0"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                                 </div>`;
@@ -447,14 +474,14 @@
                                 groupHtml += `
                                 <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-pink-50/50 shadow-sm">
                                     <div class="flex items-center">
-                                        <div class="w-8 h-8 bg-pink-50 rounded-full flex items-center justify-center mr-3">
+                                        <div class="w-8 h-8 bg-pink-50 rounded-full flex items-center justify-center mr-3 shrink-0">
                                             <i data-lucide="${itemType}" class="w-4 h-4 ${getIconColor(itemType)}"></i>
                                         </div>
-                                        <span class="font-semibold text-gray-800">${item.title}</span>
+                                        <span class="font-semibold text-gray-800 line-clamp-1">${item.title}</span>
                                     </div>
-                                    <div class="text-right">
-                                        <div class="font-extrabold text-rose-500">${Number(item.amount).toLocaleString()}<span class="text-xs text-rose-300 ml-1">¥</span></div>
-                                        <div class="text-[11px] text-gray-400 font-medium">${krwAmount}원</div>
+                                    <div class="text-right shrink-0">
+                                        <div class="font-extrabold ${isKrw ? 'text-blue-500' : 'text-rose-500'}">${Number(item.amount).toLocaleString()}<span class="text-xs ${isKrw ? 'text-blue-300' : 'text-rose-300'} ml-1">${isKrw ? '₩' : '¥'}</span></div>
+                                        <div class="text-[11px] text-gray-400 font-medium">${convertedAmount}${isKrw ? '¥' : '원'}</div>
                                     </div>
                                 </div>`;
                             }
@@ -470,7 +497,6 @@
                 });
             }
 
-            // 먹킷리스트 렌더링
             const muckContainer = document.getElementById('muckkit-container');
             muckContainer.innerHTML = '';
             ["식당", "카페", "군것질"].forEach(cat => {
@@ -516,7 +542,6 @@
                 muckContainer.innerHTML += catHtml;
             });
 
-            // 일정표 렌더링
             const tripContainer = document.getElementById('trip-container');
             tripContainer.innerHTML = '';
             tripData.forEach(day => {
@@ -553,7 +578,6 @@
                 tripContainer.appendChild(card);
             });
 
-            // 체크리스트 렌더링
             const chkContainer = document.getElementById('checklist-container');
             chkContainer.innerHTML = `<div class="flex items-center mb-5"><div class="bg-pink-100 p-2 rounded-xl mr-3"><i data-lucide="list-todo" class="w-5 h-5 text-pink-600"></i></div><h2 class="text-xl font-bold text-gray-800">체크리스트</h2></div>`;
             checklistData.forEach((item, idx) => {
